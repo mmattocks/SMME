@@ -61,10 +61,12 @@ private:
     void WriteDebugData(double currTiL, unsigned phase, double percentile);
 
 protected:
-    //mode/output switches
+    //mode/output variables
     bool mDeterministic;
     bool mDebug;
     bool mOutput;
+    bool mSequenceSampler;
+    bool mSeqSamplerLabelSister;
     //debug writer stuff
     int mTimeID;
     std::vector<int> mVarIDs;
@@ -90,6 +92,8 @@ protected:
     unsigned mMitoticMode;
     unsigned mSeed;
     boost::shared_ptr<AbstractCellProperty> mp_PostMitoticType;
+    boost::shared_ptr<AbstractCellProperty> mp_label_Type;
+
 
     /**
      * Protected copy-constructor for use by CreateCellCycleModel().
@@ -156,9 +160,10 @@ public:
                               double phaseShiftWidth = 1, double gammaShift = 4, double gammaShape = 2, double gammaScale =
                                       1, double sisterShift = 1);
 
-    //Functions to enable per-cell mitotic mode logging for mode rate fixtures.
+    //Functions to enable per-cell mitotic mode logging for mode rate & sequence sampling fixtures
     //Uses singleton logfile
     void EnableModeEventOutput(double eventStart, unsigned seed);
+    void EnableSequenceSampler(boost::shared_ptr<AbstractCellProperty> label);
 
     //More detailed debug output. Needs a ColumnDataWriter passed to it
     //Only declare ColumnDataWriter directory, filename, etc; do not set up otherwise

@@ -1,4 +1,4 @@
-#include "../../../../projects/ISP/src/GomesCellCycleModel.hpp"
+#include "GomesCellCycleModel.hpp"
 
 #include "CellLabel.hpp"
 #include "Timer.hpp"

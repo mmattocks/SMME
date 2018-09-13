@@ -1,26 +1,30 @@
-#include "../../../../projects/ISP/src/HeCellCycleModel.hpp"
+#include "HeCellCycleModel.hpp"
 
+#include "CellLabel.hpp"
 #include "ColumnDataWriter.hpp"
 
 HeCellCycleModel::HeCellCycleModel() :
-        AbstractSimpleCellCycleModel(), mDeterministic(false), mDebug(false), mOutput(false), mTimeID(), mVarIDs(), mDebugWriter(), mTiLOffset(
-                0.0), mEventStartTime(24.0), mGammaShift(4.0), mGammaShape(2.0), mGammaScale(1.0), mSisterShiftWidth(1), mMitoticModePhase2(
-                8.0), mMitoticModePhase3(15.0), mPhaseShiftWidth(2.0), mLastPhase2(), mLastPhase3(), mPhase1PP(1.0), mPhase1PD(
-                0.0), mPhase2PP(0.2), mPhase2PD(0.4), mPhase3PP(0.2), mPhase3PD(0.0), mMitoticMode(0), mSeed(0), mp_PostMitoticType()
+        AbstractSimpleCellCycleModel(), mDeterministic(false), mDebug(false), mOutput(false), mSequenceSampler(false), mSeqSamplerLabelSister(
+                false), mTimeID(), mVarIDs(), mDebugWriter(), mTiLOffset(0.0), mEventStartTime(24.0), mGammaShift(4.0), mGammaShape(
+                2.0), mGammaScale(1.0), mSisterShiftWidth(1), mMitoticModePhase2(8.0), mMitoticModePhase3(15.0), mPhaseShiftWidth(
+                2.0), mLastPhase2(), mLastPhase3(), mPhase1PP(1.0), mPhase1PD(0.0), mPhase2PP(0.2), mPhase2PD(0.4), mPhase3PP(
+                0.2), mPhase3PD(0.0), mMitoticMode(0), mSeed(0), mp_PostMitoticType(), mp_label_Type()
 {
     mReadyToDivide = true; //He model begins with a first division
 }
 
 HeCellCycleModel::HeCellCycleModel(const HeCellCycleModel& rModel) :
         AbstractSimpleCellCycleModel(rModel), mDeterministic(rModel.mDeterministic), mDebug(rModel.mDebug), mOutput(
-                rModel.mOutput), mTimeID(rModel.mTimeID), mVarIDs(rModel.mVarIDs), mDebugWriter(rModel.mDebugWriter), mTiLOffset(
-                rModel.mTiLOffset), mEventStartTime(rModel.mEventStartTime), mGammaShift(rModel.mGammaShift), mGammaShape(
-                rModel.mGammaShape), mGammaScale(rModel.mGammaScale), mSisterShiftWidth(rModel.mSisterShiftWidth), mMitoticModePhase2(
-                rModel.mMitoticModePhase2), mMitoticModePhase3(rModel.mMitoticModePhase3), mPhaseShiftWidth(
-                rModel.mPhaseShiftWidth), mLastPhase2(rModel.mLastPhase2), mLastPhase3(rModel.mLastPhase3), mPhase1PP(
-                rModel.mPhase1PP), mPhase1PD(rModel.mPhase1PD), mPhase2PP(rModel.mPhase2PP), mPhase2PD(
-                rModel.mPhase2PD), mPhase3PP(rModel.mPhase3PP), mPhase3PD(rModel.mPhase3PD), mMitoticMode(
-                rModel.mMitoticMode), mSeed(rModel.mSeed), mp_PostMitoticType(rModel.mp_PostMitoticType)
+                rModel.mOutput), mSequenceSampler(rModel.mSequenceSampler), mSeqSamplerLabelSister(
+                rModel.mSeqSamplerLabelSister), mTimeID(rModel.mTimeID), mVarIDs(rModel.mVarIDs), mDebugWriter(
+                rModel.mDebugWriter), mTiLOffset(rModel.mTiLOffset), mEventStartTime(rModel.mEventStartTime), mGammaShift(
+                rModel.mGammaShift), mGammaShape(rModel.mGammaShape), mGammaScale(rModel.mGammaScale), mSisterShiftWidth(
+                rModel.mSisterShiftWidth), mMitoticModePhase2(rModel.mMitoticModePhase2), mMitoticModePhase3(
+                rModel.mMitoticModePhase3), mPhaseShiftWidth(rModel.mPhaseShiftWidth), mLastPhase2(rModel.mLastPhase2), mLastPhase3(
+                rModel.mLastPhase3), mPhase1PP(rModel.mPhase1PP), mPhase1PD(rModel.mPhase1PD), mPhase2PP(
+                rModel.mPhase2PP), mPhase2PD(rModel.mPhase2PD), mPhase3PP(rModel.mPhase3PP), mPhase3PD(
+                rModel.mPhase3PD), mMitoticMode(rModel.mMitoticMode), mSeed(rModel.mSeed), mp_PostMitoticType(
+                rModel.mp_PostMitoticType), mp_label_Type(rModel.mp_label_Type)
 {
 }
 
@@ -154,6 +158,26 @@ void HeCellCycleModel::ResetForDivision()
         mMitoticModePhase3 = mMitoticModePhase3 + phaseShift;
     }
 
+    /******************
+     * SEQUENCE SAMPLER
+     ******************/
+
+    if (mpCell->HasCellProperty<CellLabel>())
+    {
+        (*LogFile::Instance()) << mMitoticMode;
+
+        double labelDie = p_random_number_generator->ranf();
+        if (labelDie <= .5)
+        {
+            mSeqSamplerLabelSister = true;
+            mpCell->RemoveCellProperty<CellLabel>();
+        }
+        else
+        {
+            mSeqSamplerLabelSister = false;
+        }
+    }
+
 }
 
 void HeCellCycleModel::InitialiseDaughterCell()
@@ -192,6 +216,13 @@ void HeCellCycleModel::InitialiseDaughterCell()
         mMitoticModePhase3 = mLastPhase3 + phaseShift;
     }
 
+    /******************
+     * SEQUENCE SAMPLER
+     ******************/
+    if (!mSeqSamplerLabelSister)
+    {
+        mpCell->RemoveCellProperty<CellLabel>();
+    }
 }
 
 void HeCellCycleModel::EnableModeEventOutput(double eventStart, unsigned seed)
@@ -207,6 +238,12 @@ void HeCellCycleModel::WriteModeEventOutput()
     CellPtr currentCell = GetCell();
     double currentCellID = (double) currentCell->GetCellId();
     (*LogFile::Instance()) << currentTime << "\t" << mSeed << "\t" << currentCellID << "\t" << mMitoticMode << "\n";
+}
+
+void HeCellCycleModel::EnableSequenceSampler(boost::shared_ptr<AbstractCellProperty> label)
+{
+    mSequenceSampler = true;
+    mp_label_Type = label;
 }
 
 void HeCellCycleModel::EnableModelDebugOutput(boost::shared_ptr<ColumnDataWriter> debugWriter)
