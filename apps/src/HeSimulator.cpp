@@ -30,24 +30,25 @@ int main(int argc, char *argv[])
     //main() returns code indicating sim run success or failure mode
     int exit_code = ExecutableSupport::EXIT_OK;
 
-    if (argc < 2)
+    if (argc != 22 && argc != 20)
     {
         ExecutableSupport::PrintError(
-                "Not enough arguments for simulator. Usage (replace<> with values): HeSimulator 0 <startSeed> <endSeed> <mMitoticModePhase2> <mMitoticModePhase3> <pPP1> <pPD1> <pPP1> <pPD1> <pPP1> <pPD1> <inductionTime> <earliestLineageStart> <latestLineageStart> <endTime> <deterministicModeBool>",
+                "Wrong arguments for simulator.\nUsage (replace<> with values, pass bools as 0 or 1):\nStochastic Mode:\nHeSimulator <directoryString> <filenameString> <outputModeUnsigned(0=counts,1=events,2=sequence)> <deterministicBool=0> <fixtureUnsigned(0=He;1=Wan;2=test)> <founderAth5Mutant?Bool> <debugOutputBool> <startSeedUnsigned> <endSeedUnsigned>  <inductionTimeDoubleHours> <earliestLineageStartDoubleHours> <latestLineageStartDoubleHours> <endTimeDoubleHours> <mMitoticModePhase2Double> <mMitoticModePhase3Double> <pPP1Double(0-1)> <pPD1Double(0-1)> <pPP1Double(0-1)> <pPD1Double(0-1)> <pPP1Double(0-1)> <pPD1Double(0-1)>\nDeterministic Mode:\nHeSimulator <directoryString> <filenameString> <outputModeUnsigned(0=counts,1=events,2=sequence)> <deterministicBool=1> <fixtureUnsigned(0=He;1=Wan;2=test)> <founderAth5Mutant?Bool> <debugOutputBool> <startSeedUnsigned> <endSeedUnsigned>  <inductionTimeDoubleHours> <earliestLineageStartDoubleHours> <latestLineageStartDoubleHours> <endTimeDoubleHours> <phase1ShapeDouble(>0)> <phase1ScaleDouble(>0)> <phase2ShapeDouble(>0)> <phase2ScaleDouble(>0)> <phaseBoundarySisterShiftWidthDouble>\n",
                 true);
         exit_code = ExecutableSupport::EXIT_BAD_ARGUMENTS;
+        return exit_code;
     }
 
     /***********************
      * SIMULATOR PARAMETERS
      ***********************/
-    std::string idString, directoryString, filenameString;
+    std::string directoryString, filenameString;
     int outputMode; //0 = counts; 1 = mitotic mode events; 2 = mitotic mode sequence sampling
-    bool deterministicMode, debugOutput;
+    bool deterministicMode, ath5founder, debugOutput;
     unsigned fixture, startSeed, endSeed; //fixture 0 = He2012; 1 = Wan2016
     double inductionTime, earliestLineageStartTime, latestLineageStartTime, endTime;
     double mitoticModePhase2, mitoticModePhase3, pPP1, pPD1, pPP2, pPD2, pPP3, pPD3; //stochastic model parameters
-    double phase1Shape, phase1Scale, phase2Shape, phase2Scale, phaseSisterShiftWidth;
+    double phase1Shape, phase1Scale, phase2Shape, phase2Scale, phaseSisterShiftWidth, phaseOffset;
 
     //PARSE ARGUMENTS
     directoryString = argv[1];
@@ -55,74 +56,191 @@ int main(int argc, char *argv[])
     outputMode = std::stoi(argv[3]);
     deterministicMode = std::stoul(argv[4]);
     fixture = std::stoul(argv[5]);
-    debugOutput = std::stoul(argv[6]);
-    startSeed = std::stoul(argv[7]);
-    endSeed = std::stoul(argv[8]);
-    inductionTime = std::stod(argv[9]);
-    earliestLineageStartTime = std::stod(argv[10]);
-    latestLineageStartTime = std::stod(argv[11]);
-    endTime = std::stod(argv[12]);
-
+    ath5founder = std::stoul(argv[6]);
+    debugOutput = std::stoul(argv[7]);
+    startSeed = std::stoul(argv[8]);
+    endSeed = std::stoul(argv[9]);
+    inductionTime = std::stod(argv[10]);
+    earliestLineageStartTime = std::stod(argv[11]);
+    latestLineageStartTime = std::stod(argv[12]);
+    endTime = std::stod(argv[13]);
 
     if (deterministicMode == 0)
     {
-        if (argc < 21)
-        {
-            ExecutableSupport::PrintError(
-                    "Not enough arguments for stochastic model. Usage (replace<> with values): HeSimulator 0 <startSeed> <endSeed> <mMitoticModePhase2> <mMitoticModePhase3> <pPP1> <pPD1> <pPP1> <pPD1> <pPP1> <pPD1> <inductionTime> <earliestLineageStart> <latestLineageStart> <endTime> <deterministicModeBool>",
-                    true);
-            exit_code = ExecutableSupport::EXIT_BAD_ARGUMENTS;
-        }
-
-        mitoticModePhase2 = std::stod(argv[13]);
-        mitoticModePhase3 = std::stod(argv[14]);
-        pPP1 = std::stod(argv[15]);
-        pPD1 = std::stod(argv[16]);
-        pPP2 = std::stod(argv[17]);
-        pPD2 = std::stod(argv[18]);
-        pPP3 = std::stod(argv[19]);
-        pPD3 = std::stod(argv[20]);
+        mitoticModePhase2 = std::stod(argv[14]);
+        mitoticModePhase3 = std::stod(argv[15]);
+        pPP1 = std::stod(argv[16]);
+        pPD1 = std::stod(argv[17]);
+        pPP2 = std::stod(argv[18]);
+        pPD2 = std::stod(argv[19]);
+        pPP3 = std::stod(argv[20]);
+        pPD3 = std::stod(argv[21]);
     }
-
     else if (deterministicMode == 1)
     {
-        if (argc < 18)
-        {
-            ExecutableSupport::PrintError(
-                    "Not enough arguments for deterministic model. Usage (replace<> with values): HeSimulator <startSeed> <endSeed> <mMitoticModePhase2> <mMitoticModePhase3> <pPP1> <pPD1> <pPP1> <pPD1> <pPP1> <pPD1> <inductionTime> <earliestLineageStart> <latestLineageStart> <endTime> <deterministicModeBool>",
-                    true);
-            exit_code = ExecutableSupport::EXIT_BAD_ARGUMENTS;
-        }
-        phase1Shape = std::stod(argv[13]);
-        phase1Scale = std::stod(argv[14]);
-        phase2Shape = std::stod(argv[15]);
-        phase2Scale = std::stod(argv[16]);
-        phaseSisterShiftWidth = std::stod(argv[17]);
+        phase1Shape = std::stod(argv[14]);
+        phase1Scale = std::stod(argv[15]);
+        phase2Shape = std::stod(argv[16]);
+        phase2Scale = std::stod(argv[17]);
+        phaseSisterShiftWidth = std::stod(argv[18]);
+        phaseOffset = std::stod(argv[19]);
+    }
+    else
+    {
+        ExecutableSupport::PrintError("Bad deterministicMode (argument 4). Must be 0 or 1");
+        exit_code = ExecutableSupport::EXIT_BAD_ARGUMENTS;
+        return exit_code;
     }
 
-    //Set up singleton LogFile
+    /************************
+     * PARAMETER/ARGUMENT SANITY CHECK
+     ************************/
+    bool sane = 1;
+
+    if (outputMode != 0 && outputMode != 1 && outputMode != 2)
+    {
+        ExecutableSupport::PrintError(
+                "Bad outputMode (argument 3). Must be 0 (counts) 1 (mitotic events) or 2 (sequence sampling)");
+        sane = 0;
+    }
+
+    if (fixture != 0 && fixture != 1 && fixture != 2)
+    {
+        ExecutableSupport::PrintError("Bad fixture (argument 5). Must be 0 (He), 1 (Wan), or 2 (validation/test)");
+        sane = 0;
+    }
+
+    if (ath5founder != 0 && ath5founder != 1)
+    {
+        ExecutableSupport::PrintError("Bad ath5founder (argument 6). Must be 0 (wild type) or 1 (ath5 mutant)");
+        sane = 0;
+    }
+
+    if (startSeed >= endSeed)
+    {
+        ExecutableSupport::PrintError("Bad start & end seeds (arguments, 8, 9). startseed must be < endSeed");
+        sane = 0;
+    }
+
+    if (inductionTime >= endTime)
+    {
+        ExecutableSupport::PrintError("Bad latestLineageStartTime (argument 10). Must be <endTime(arg13)");
+        sane = 0;
+    }
+    if (earliestLineageStartTime >= endTime || earliestLineageStartTime >= latestLineageStartTime)
+    {
+        ExecutableSupport::PrintError(
+                "Bad earliestLineageStartTime (argument 11). Must be <endTime(arg13), <latestLineageStarTime (arg12)");
+        sane = 0;
+    }
+    if (latestLineageStartTime >= endTime)
+    {
+        ExecutableSupport::PrintError("Bad latestLineageStartTime (argument 12). Must be <endTime(arg13)");
+        sane = 0;
+    }
+
+    if (deterministicMode == 0)
+    {
+        if (mitoticModePhase2 < 0)
+        {
+            ExecutableSupport::PrintError("Bad mitoticModePhase2 (argument 14). Must be >0");
+            sane = 0;
+        }
+        if (mitoticModePhase3 < 0)
+        {
+            ExecutableSupport::PrintError("Bad mitoticModePhase3 (argument 15). Must be >0");
+            sane = 0;
+        }
+        if (pPP1 + pPD1 > 1 || pPP1 > 1 || pPP1 < 0 || pPD1 > 1 || pPD1 < 0)
+        {
+            ExecutableSupport::PrintError(
+                    "Bad phase 1 probabilities (arguments 16, 17). pPP1 + pPD1 should be >=0, <=1, sum should not exceed 1");
+            sane = 0;
+        }
+        if (pPP2 + pPD2 > 1 || pPP2 > 1 || pPP2 < 0 || pPD2 > 1 || pPD2 < 0)
+        {
+            ExecutableSupport::PrintError(
+                    "Bad phase 2 probabilities (arguments 18, 19). pPP2 + pPD2 should be >=0, <=1, sum should not exceed 1");
+            sane = 0;
+        }
+        if (pPP3 + pPD3 > 1 || pPP3 > 1 || pPP3 < 0 || pPD3 > 1 || pPD3 < 0)
+        {
+            ExecutableSupport::PrintError(
+                    "Bad phase 3 probabilities (arguments 20, 21). pPP3 + pPD3 should be >=0, <=1, sum should not exceed 1");
+            sane = 0;
+        }
+    }
+
+    if (deterministicMode == 1)
+    {
+        if (phase1Shape <= 0)
+        {
+            ExecutableSupport::PrintError("Bad phase1Shape (argument 14). Must be >0");
+            sane = 0;
+        }
+        if (phase1Scale <= 0)
+        {
+            ExecutableSupport::PrintError("Bad phase1Scale (argument 15). Must be >0");
+            sane = 0;
+        }
+        if (phase2Shape <= 0)
+        {
+            ExecutableSupport::PrintError("Bad phase1Shape (argument 16). Must be >0");
+            sane = 0;
+        }
+        if (phase2Scale <= 0)
+        {
+            ExecutableSupport::PrintError("Bad phase1Scale (argument 17). Must be >0");
+            sane = 0;
+        }
+        if (phaseSisterShiftWidth <= 0)
+        {
+            ExecutableSupport::PrintError("Bad phaseSisterShiftWidth (argument 18). Must be >0");
+            sane = 0;
+        }
+    }
+
+    if (sane == 0)
+    {
+        ExecutableSupport::PrintError("Exiting with bad arguments. See errors for details");
+        exit_code = ExecutableSupport::EXIT_BAD_ARGUMENTS;
+        return exit_code;
+
+    }
+
+    /************************
+     * SIMULATOR OUTPUT SETUP
+     ************************/
+
+//Set up singleton LogFile
     LogFile* p_log = LogFile::Instance();
     p_log->Set(0, directoryString, filenameString);
 
     ExecutableSupport::Print("Simulator writing file " + filenameString + " to directory " + directoryString);
 
-    //Log entry counter
+//Log entry counter
     unsigned entry_number = 1;
 
-    //Write appropriate headers to log
+//Write appropriate headers to log
     if (outputMode == 0) *p_log << "Entry\tInduction Time (h)\tSeed\tCount\n";
     if (outputMode == 1) *p_log << "Time (hpf)\tSeed\tCellID\tMitotic Mode (0=PP;1=PD;2=DD)\n";
     if (outputMode == 2) *p_log << "Entry\tSeed\tSequence\n";
 
-    //Instance RNG
+//Instance RNG
     RandomNumberGenerator* p_RNG = RandomNumberGenerator::Instance();
 
-    //Initialise pointers to relevant singleton ProliferativeTypes and Properties
+//Initialise pointers to relevant singleton ProliferativeTypes and Properties
     MAKE_PTR(WildTypeCellMutationState, p_state);
     MAKE_PTR(TransitCellProliferativeType, p_Mitotic);
     MAKE_PTR(DifferentiatedCellProliferativeType, p_PostMitotic);
+    MAKE_PTR(Ath5Mo, p_Morpholino);
+    MAKE_PTR(CellLabel, p_label);
 
-    //iterate through supplied seed range, executing one simulation per seed
+    /************************
+     * SIMULATOR SETUP & RUN
+     ************************/
+
+//iterate through supplied seed range, executing one simulation per seed
     for (unsigned seed = startSeed; seed <= endSeed; seed++)
     {
         if (outputMode == 2) *p_log << entry_number << "\t" << seed << "\t"; //write seed to log - sequence written by cellcyclemodel objects
@@ -141,8 +259,9 @@ int main(int argc, char *argv[])
 
         if (debugOutput)
         {
-        //Pass ColumnDataWriter to cell cycle model for debug output
-            boost::shared_ptr<ColumnDataWriter> p_debugWriter(new ColumnDataWriter(directoryString, filenameString+"DEBUG_"+ std::to_string(seed), false, 10));
+            //Pass ColumnDataWriter to cell cycle model for debug output
+            boost::shared_ptr<ColumnDataWriter> p_debugWriter(
+                    new ColumnDataWriter(directoryString, filenameString + "DEBUG_" + std::to_string(seed), false, 10));
             p_cycle_model->EnableModelDebugOutput(p_debugWriter);
             debugWriter = &*p_debugWriter;
         }
@@ -181,9 +300,14 @@ int main(int argc, char *argv[])
         {
             //generate random lineage start time from even random distro across CMZ residency time
             currTiL = p_RNG->ranf() * endTime;
-            //calculate simEndTime, only run from tiL to endTime. Min simulation time is 3 minutes (prevents 0 sim endtime errors)
-            currSimEndTime = std::max(0.05, endTime - currTiL);
+            //SimEndTime is a timeout
+            currSimEndTime = 240;
             if (outputMode == 1) p_cycle_model->EnableModeEventOutput(0, seed);
+        }
+        else if (fixture == 2) //validation fixture- all founders have TiL given by induction time
+        {
+            currTiL = inductionTime;
+            currSimEndTime = endTime;
         }
 
         //Setup lineages' cycle model with appropriate parameters
@@ -198,16 +322,22 @@ int main(int argc, char *argv[])
         else
         {
             //Gamma-distribute phase3 boundary
-            double currPhase2Boundary = p_RNG->GammaRandomDeviate(phase1Shape, phase1Scale);
+            double currPhase2Boundary = phaseOffset + p_RNG->GammaRandomDeviate(phase1Shape, phase1Scale);
             double currPhase3Boundary = currPhase2Boundary + p_RNG->GammaRandomDeviate(phase2Shape, phase2Scale);
 
             p_cycle_model->SetDeterministicMode(currTiL, currPhase2Boundary, currPhase3Boundary, phaseSisterShiftWidth);
         }
 
+        if (outputMode == 2) p_cycle_model->EnableSequenceSampler(p_label);
+
         //Setup vector containing lineage founder with the properly set up cell cycle model
         std::vector<CellPtr> cells;
         CellPtr p_cell(new Cell(p_state, p_cycle_model));
         p_cell->SetCellProliferativeType(p_Mitotic);
+        if(ath5founder == 1)
+        {
+            p_cell->AddCellProperty(p_Morpholino);
+        }
         p_cell->InitialiseCellCycleModel();
         cells.push_back(p_cell);
 
@@ -253,4 +383,3 @@ int main(int argc, char *argv[])
     return exit_code;
 }
 ;
-

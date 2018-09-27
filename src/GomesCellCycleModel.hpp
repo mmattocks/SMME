@@ -3,23 +3,37 @@
 
 #include "AbstractSimpleCellCycleModel.hpp"
 #include "RandomNumberGenerator.hpp"
-#include "DifferentiatedCellProliferativeType.hpp"
-#include "ColumnDataWriter.hpp"
 #include "Cell.hpp"
-#include <RandomNumberGenerator.hpp>
-#include <SimulationTime.hpp>
-#include "HeAth5Mo.hpp"
+#include "DifferentiatedCellProliferativeType.hpp"
 #include "SmartPointers.hpp"
+#include "ColumnDataWriter.hpp"
 #include "LogFile.hpp"
+#include "CellLabel.hpp"
 
-/**
- * A stochastic cell-cycle model where cells divide with a stochastic cell cycle duration
- * with the length of the cell cycle drawn from a uniform distribution
- * on [mMinCellCycleDuration, mMaxCellCycleDuration].
+/*******************************************
+ * GOMES CELL CYCLE MODEL
+ * As described in Gomes et al. 2011 [Gomes2011] doi: 10.1242/dev.059683
  *
- * If the cell is differentiated, then the cell cycle duration is set to be infinite,
- * so that the cell will never divide.
- */
+ * USE: By default, GomesCellCycleModels are constructed with the parameter fit reported in [Gomes2011].
+ * Cell cycle length, mitotic mode, and postmitotic fate of cells are determined by independent random variables
+ * PP = symmetric proliferative mitotic mode, both progeny remain mitotic
+ * PD = asymmetric proliferative mitotic mode, one progeny exits the cell cycle and differentiates
+ * DD = symmetric differentiative mitotic mode, both progeny exit the cell cycle and differentiate
+ *
+ * Change default model parameters with SetModelParameters(<params>);
+ * Set AbstractCellProperties for differentiated neural types with SetModelProperties();
+ *
+ * 2 per-model-event output modes:
+ * EnableModeEventOutput() enables mitotic mode event logging-all cells will write to the singleton log file
+ * EnableModelDebugOutput() enables more detailed debug output, each seed will have its own file written to
+ * by a ColumnDataWriter passed to it from the test
+ * (eg. by the SetupDebugOutput helper function in the project simulator)
+ *
+ * 1 mitotic-event-sequence sampler (only samples one "path" through the lineage):
+ * EnableSequenceSampler() - one "sequence" of progenitors writes mitotic event type to a string in the singleton log file
+ *
+ **********************************************/
+
 class GomesCellCycleModel : public AbstractSimpleCellCycleModel
 {
     friend class TestSimpleCellCycleModels;
@@ -71,7 +85,6 @@ protected:
     boost::shared_ptr<AbstractCellProperty> mp_MG_Type;
     boost::shared_ptr<AbstractCellProperty> mp_label_Type;
 
-
     /**
      * Protected copy-constructor for use by CreateCellCycleModel().
      *
@@ -96,7 +109,7 @@ public:
     GomesCellCycleModel();
 
     /**
-     * SetCellCycleDuration() method to set length of cell cycle (default 1.0 as Boije's model is purely generational)
+     * SetCellCycleDuration() method to set length of cell cycle (lognormal distribution as specified in [Gomes2011])
      */
     void SetCellCycleDuration();
 
@@ -108,25 +121,41 @@ public:
      */
     AbstractCellCycleModel* CreateCellCycleModel();
 
-    /** Overridden ResetForDivision() method. */
+    /**
+     * Overridden ResetForDivision() method.
+     * Contains general mitotic mode logic
+     **/
     void ResetForDivision();
 
-    /** Overridden InitialiseDaughterCell() method. */
+    /** Overridden InitialiseDaughterCell() method. Used to implement asymmetric mitotic mode*/
     void InitialiseDaughterCell();
 
-    void SetPostMitoticType(boost::shared_ptr<AbstractCellProperty> p_PostMitoticType);
-    void SetModelParameters(const double normalMu, const double normalSigma, const double PP, const double PD);
+    /* Model setup functions
+     * Set lognormal cell cycle curve properties with *mean and std of corresponding NORMAL curve*
+     * Model requires valid AbstractCellProperties to assign postmitotic fate;
+     * Defaults are found in GomesRetinalNeuralFates.hpp
+     * (RodPohotreceptor, AmacrineCell, BipolarCell, MullerGlia)
+     */
+
+    void SetModelParameters(const double normalMu = 3.9716, const double normalSigma = .32839, const double PP = .055,
+                            const double PD = .221, const double pBC = .128, const double pAC = .106, const double pMG =
+                                    .028);
     void SetModelProperties(boost::shared_ptr<AbstractCellProperty> p_RPh_Type,
                             boost::shared_ptr<AbstractCellProperty> p_AC_Type,
                             boost::shared_ptr<AbstractCellProperty> p_BC_Type,
-                            boost::shared_ptr<AbstractCellProperty> p_MG_Type
-                            );
+                            boost::shared_ptr<AbstractCellProperty> p_MG_Type);
 
+    //This should normally be a DifferentiatedCellProliferativeType
+    void SetPostMitoticType(boost::shared_ptr<AbstractCellProperty> p_PostMitoticType);
 
-    void EnableModeEventOutput(boost::shared_ptr<ColumnDataWriter> modeWriter, double eventStart, unsigned seed,
-                               int timeID, std::vector<int> varIDs);
-    void EnableModelDebugOutput(boost::shared_ptr<ColumnDataWriter> debugWriter);
+    //Functions to enable per-cell mitotic mode logging for mode rate & sequence sampling fixtures
+    //Uses singleton logfile
+    void EnableModeEventOutput(double eventStart, unsigned seed);
     void EnableSequenceSampler(boost::shared_ptr<AbstractCellProperty> label);
+
+    //More detailed debug output. Needs a ColumnDataWriter passed to it
+    //Only declare ColumnDataWriter directory, filename, etc; do not set up otherwise
+    void EnableModelDebugOutput(boost::shared_ptr<ColumnDataWriter> debugWriter);
 
     void WriteModeEventOutput();
     void WriteDebugData(double percentile);

@@ -1,8 +1,5 @@
 #include "HeCellCycleModel.hpp"
 
-#include "CellLabel.hpp"
-#include "ColumnDataWriter.hpp"
-
 HeCellCycleModel::HeCellCycleModel() :
         AbstractSimpleCellCycleModel(), mDeterministic(false), mDebug(false), mOutput(false), mSequenceSampler(false), mSeqSamplerLabelSister(
                 false), mTimeID(), mVarIDs(), mDebugWriter(), mTiLOffset(0.0), mEventStartTime(24.0), mGammaShift(4.0), mGammaShape(
@@ -225,66 +222,6 @@ void HeCellCycleModel::InitialiseDaughterCell()
     }
 }
 
-void HeCellCycleModel::EnableModeEventOutput(double eventStart, unsigned seed)
-{
-    mOutput = true;
-    mEventStartTime = eventStart;
-    mSeed = seed;
-}
-
-void HeCellCycleModel::WriteModeEventOutput()
-{
-    double currentTime = SimulationTime::Instance()->GetTime() + mEventStartTime;
-    CellPtr currentCell = GetCell();
-    double currentCellID = (double) currentCell->GetCellId();
-    (*LogFile::Instance()) << currentTime << "\t" << mSeed << "\t" << currentCellID << "\t" << mMitoticMode << "\n";
-}
-
-void HeCellCycleModel::EnableSequenceSampler(boost::shared_ptr<AbstractCellProperty> label)
-{
-    mSequenceSampler = true;
-    mp_label_Type = label;
-}
-
-void HeCellCycleModel::EnableModelDebugOutput(boost::shared_ptr<ColumnDataWriter> debugWriter)
-{
-    mDebug = true;
-    mDebugWriter = debugWriter;
-
-    mTimeID = mDebugWriter->DefineUnlimitedDimension("Time", "h");
-    mVarIDs.push_back(mDebugWriter->DefineVariable("CellID", "No"));
-    mVarIDs.push_back(mDebugWriter->DefineVariable("TiL", "h"));
-    mVarIDs.push_back(mDebugWriter->DefineVariable("CycleDuration", "h"));
-    mVarIDs.push_back(mDebugWriter->DefineVariable("Phase2Boundary", "h"));
-    mVarIDs.push_back(mDebugWriter->DefineVariable("Phase3Boundary", "h"));
-    mVarIDs.push_back(mDebugWriter->DefineVariable("Phase", "No"));
-    mVarIDs.push_back(mDebugWriter->DefineVariable("Dieroll", "Percentile"));
-    mVarIDs.push_back(mDebugWriter->DefineVariable("MitoticMode", "Mode"));
-
-    mDebugWriter->EndDefineMode();
-}
-
-void HeCellCycleModel::WriteDebugData(double currentTiL, unsigned phase, double mitoticModeRV)
-{
-    double currentTime = SimulationTime::Instance()->GetTime();
-    CellPtr currentCell = GetCell();
-    double currentCellID = (double) currentCell->GetCellId();
-
-    mDebugWriter->PutVariable(mTimeID, currentTime);
-    mDebugWriter->PutVariable(mVarIDs[0], currentCellID);
-    mDebugWriter->PutVariable(mVarIDs[1], currentTiL);
-    mDebugWriter->PutVariable(mVarIDs[2], mCellCycleDuration);
-    mDebugWriter->PutVariable(mVarIDs[3], mMitoticModePhase2);
-    mDebugWriter->PutVariable(mVarIDs[4], mMitoticModePhase3);
-    mDebugWriter->PutVariable(mVarIDs[5], phase);
-    if (!mDeterministic)
-    {
-        mDebugWriter->PutVariable(mVarIDs[6], mitoticModeRV);
-    }
-    mDebugWriter->PutVariable(mVarIDs[7], mMitoticMode);
-    mDebugWriter->AdvanceAlongUnlimitedDimension();
-}
-
 void HeCellCycleModel::SetModelParameters(double tiLOffset, double mitoticModePhase2, double mitoticModePhase3,
                                           double phase1PP, double phase1PD, double phase2PP, double phase2PD,
                                           double phase3PP, double phase3PD, double gammaShift, double gammaShape,
@@ -345,6 +282,66 @@ void HeCellCycleModel::SetDeterministicMode(double tiLOffset, double mitoticMode
 void HeCellCycleModel::SetPostMitoticType(boost::shared_ptr<AbstractCellProperty> p_PostMitoticType)
 {
     mp_PostMitoticType = p_PostMitoticType;
+}
+
+void HeCellCycleModel::EnableModeEventOutput(double eventStart, unsigned seed)
+{
+    mOutput = true;
+    mEventStartTime = eventStart;
+    mSeed = seed;
+}
+
+void HeCellCycleModel::WriteModeEventOutput()
+{
+    double currentTime = SimulationTime::Instance()->GetTime() + mEventStartTime;
+    CellPtr currentCell = GetCell();
+    double currentCellID = (double) currentCell->GetCellId();
+    (*LogFile::Instance()) << currentTime << "\t" << mSeed << "\t" << currentCellID << "\t" << mMitoticMode << "\n";
+}
+
+void HeCellCycleModel::EnableSequenceSampler(boost::shared_ptr<AbstractCellProperty> label)
+{
+    mSequenceSampler = true;
+    mp_label_Type = label;
+}
+
+void HeCellCycleModel::EnableModelDebugOutput(boost::shared_ptr<ColumnDataWriter> debugWriter)
+{
+    mDebug = true;
+    mDebugWriter = debugWriter;
+
+    mTimeID = mDebugWriter->DefineUnlimitedDimension("Time", "h");
+    mVarIDs.push_back(mDebugWriter->DefineVariable("CellID", "No"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("TiL", "h"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("CycleDuration", "h"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("Phase2Boundary", "h"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("Phase3Boundary", "h"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("Phase", "No"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("Dieroll", "Percentile"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("MitoticMode", "Mode"));
+
+    mDebugWriter->EndDefineMode();
+}
+
+void HeCellCycleModel::WriteDebugData(double currentTiL, unsigned phase, double mitoticModeRV)
+{
+    double currentTime = SimulationTime::Instance()->GetTime();
+    CellPtr currentCell = GetCell();
+    double currentCellID = (double) currentCell->GetCellId();
+
+    mDebugWriter->PutVariable(mTimeID, currentTime);
+    mDebugWriter->PutVariable(mVarIDs[0], currentCellID);
+    mDebugWriter->PutVariable(mVarIDs[1], currentTiL);
+    mDebugWriter->PutVariable(mVarIDs[2], mCellCycleDuration);
+    mDebugWriter->PutVariable(mVarIDs[3], mMitoticModePhase2);
+    mDebugWriter->PutVariable(mVarIDs[4], mMitoticModePhase3);
+    mDebugWriter->PutVariable(mVarIDs[5], phase);
+    if (!mDeterministic)
+    {
+        mDebugWriter->PutVariable(mVarIDs[6], mitoticModeRV);
+    }
+    mDebugWriter->PutVariable(mVarIDs[7], mMitoticMode);
+    mDebugWriter->AdvanceAlongUnlimitedDimension();
 }
 
 /******************

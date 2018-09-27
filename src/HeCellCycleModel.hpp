@@ -7,8 +7,9 @@
 #include "DifferentiatedCellProliferativeType.hpp"
 #include "SmartPointers.hpp"
 #include "ColumnDataWriter.hpp"
-#include "HeAth5Mo.hpp"
 #include "LogFile.hpp"
+#include "CellLabel.hpp"
+#include "HeAth5Mo.hpp"
 
 /***********************************
  * HE CELL CYCLE MODEL
@@ -27,7 +28,10 @@
  * EnableModeEventOutput() enables mitotic mode event logging-all cells will write to the singleton log file
  * EnableModelDebugOutput() enables more detailed debug output, each seed will have its own file written to
  * by a ColumnDataWriter passed to it from the test
- * (eg. by the SetupDebugOutput helper function in the project Test classes)
+ * (eg. by the SetupDebugOutput helper function in the project simulator)
+ *
+ * 1 mitotic-event-sequence sampler (only samples one "path" through the lineage):
+ * EnableSequenceSampler() - one "sequence" of progenitors writes mitotic event type to a string in the singleton log file
  *
  ************************************/
 
@@ -94,7 +98,6 @@ protected:
     boost::shared_ptr<AbstractCellProperty> mp_PostMitoticType;
     boost::shared_ptr<AbstractCellProperty> mp_label_Type;
 
-
     /**
      * Protected copy-constructor for use by CreateCellCycleModel().
      *
@@ -144,21 +147,21 @@ public:
      * */
     void InitialiseDaughterCell();
 
-    //This should normally be a DifferentiatedCellProliferativeType
-    void SetPostMitoticType(boost::shared_ptr<AbstractCellProperty> p_PostMitoticType);
-
     /*Model setup functions for standard He (SetModelParameters) and deterministic alternative (SetDeterministicMode) models
-    Default parameters are from refits of He et al + deterministic alternatives
-    He 2012 params: mitoticModePhase2 = 8, mitoticModePhase3 = 15, p1PP = 1, p1PD = 0, p2PP = .2, p2PD = .4, p3PP = .2, p3PD = 0
-    gammaShift = 4, gammaShape = 2, gammaScale = 1, sisterShift = 1
-    */
+     * Default parameters are from refits of He et al + deterministic alternatives
+     * He 2012 params: mitoticModePhase2 = 8, mitoticModePhase3 = 15, p1PP = 1, p1PD = 0, p2PP = .2, p2PD = .4, p3PP = .2, p3PD = 0
+     * gammaShift = 4, gammaShape = 2, gammaScale = 1, sisterShift = 1
+     */
     void SetModelParameters(double tiLOffset = 0, double mitoticModePhase2 = 8, double mitoticModePhase3 = 15,
                             double phase1PP = 1, double phase1PD = 0, double phase2PP = .2, double phase2PD = .4,
                             double phase3PP = .2, double phase3PD = 0, double gammaShift = 4, double gammaShape = 2,
                             double gammaScale = 1, double sisterShift = 1);
     void SetDeterministicMode(double tiLOffset = 0, double mitoticModePhase2 = 8, double mitoticModePhase3 = 15,
-                              double phaseShiftWidth = 1, double gammaShift = 4, double gammaShape = 2, double gammaScale =
-                                      1, double sisterShift = 1);
+                              double phaseShiftWidth = 1, double gammaShift = 4, double gammaShape = 2,
+                              double gammaScale = 1, double sisterShift = 1);
+
+    //This should normally be a DifferentiatedCellProliferativeType
+    void SetPostMitoticType(boost::shared_ptr<AbstractCellProperty> p_PostMitoticType);
 
     //Functions to enable per-cell mitotic mode logging for mode rate & sequence sampling fixtures
     //Uses singleton logfile

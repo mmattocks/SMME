@@ -1,8 +1,5 @@
 #include "GomesCellCycleModel.hpp"
 
-#include "CellLabel.hpp"
-#include "Timer.hpp"
-
 GomesCellCycleModel::GomesCellCycleModel() :
         AbstractSimpleCellCycleModel(), mDebug(false), mOutput(false), mSequenceSampler(false), mSeqSamplerLabelSister(
                 false), mTimeID(), mVarIDs(), mDebugWriter(), mModeEventWriter(), mEventStartTime(), mNormalMu(3.9716), mNormalSigma(
@@ -180,17 +177,72 @@ void GomesCellCycleModel::InitialiseDaughterCell()
 
 }
 
+void GomesCellCycleModel::SetModelParameters(const double normalMu, const double normalSigma, const double PP,
+                                             const double PD, const double pBC, const double pAC, const double pMG)
+{
+    mNormalMu = normalMu;
+    mNormalSigma = normalSigma;
+    mPP = PP;
+    mPD = PD;
+    mpBC = pBC;
+    mpAC = pAC;
+    mpMG = pMG;
+
+}
+
+void GomesCellCycleModel::SetModelProperties(boost::shared_ptr<AbstractCellProperty> p_RPh_Type,
+                                             boost::shared_ptr<AbstractCellProperty> p_AC_Type,
+                                             boost::shared_ptr<AbstractCellProperty> p_BC_Type,
+                                             boost::shared_ptr<AbstractCellProperty> p_MG_Type)
+{
+    mp_RPh_Type = p_RPh_Type;
+    mp_AC_Type = p_AC_Type;
+    mp_BC_Type = p_BC_Type;
+    mp_MG_Type = p_MG_Type;
+}
+
+void GomesCellCycleModel::SetPostMitoticType(boost::shared_ptr<AbstractCellProperty> p_PostMitoticType)
+{
+    mp_PostMitoticType = p_PostMitoticType;
+}
+
+void GomesCellCycleModel::EnableModeEventOutput(double eventStart, unsigned seed)
+{
+    mOutput = true;
+    mEventStartTime = eventStart;
+    mSeed = seed;
+
+}
+
 void GomesCellCycleModel::WriteModeEventOutput()
 {
     double currentTime = SimulationTime::Instance()->GetTime() + mEventStartTime;
     CellPtr currentCell = GetCell();
     double currentCellID = (double) currentCell->GetCellId();
-    mModeEventWriter->PutVariable(mTimeID, currentTime);
-    mModeEventWriter->PutVariable(mVarIDs[0], mSeed);
-    mModeEventWriter->PutVariable(mVarIDs[1], currentCellID);
-    mModeEventWriter->PutVariable(mVarIDs[2], mMitoticMode);
-    mModeEventWriter->AdvanceAlongUnlimitedDimension();
+    (*LogFile::Instance()) << currentTime << "\t" << mSeed << "\t" << currentCellID << "\t" << mMitoticMode << "\n";
+}
 
+void GomesCellCycleModel::EnableSequenceSampler(boost::shared_ptr<AbstractCellProperty> label)
+{
+    mSequenceSampler = true;
+    mp_label_Type = label;
+}
+
+
+void GomesCellCycleModel::EnableModelDebugOutput(boost::shared_ptr<ColumnDataWriter> debugWriter)
+{
+    mDebug = true;
+    mDebugWriter = debugWriter;
+
+    mTimeID = mDebugWriter->DefineUnlimitedDimension("Time", "h");
+    mVarIDs.push_back(mDebugWriter->DefineVariable("CellID", "No"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("CycleDuration", "h"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("PP", "Percentile"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("PD", "Percentile"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("Dieroll", "Percentile"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("MitoticMode", "Mode"));
+
+    mDebugWriter->EndDefineMode();
 }
 
 void GomesCellCycleModel::WriteDebugData(double percentileRoll)
@@ -209,65 +261,9 @@ void GomesCellCycleModel::WriteDebugData(double percentileRoll)
     mDebugWriter->AdvanceAlongUnlimitedDimension();
 }
 
-void GomesCellCycleModel::SetPostMitoticType(boost::shared_ptr<AbstractCellProperty> p_PostMitoticType)
-{
-    mp_PostMitoticType = p_PostMitoticType;
-}
-
-void GomesCellCycleModel::SetModelParameters(const double normalMu, const double normalSigma, const double PP,
-                                             const double PD)
-{
-    mNormalMu = normalMu;
-    mNormalSigma = normalSigma;
-    mPP = PP;
-    mPD = PD;
-}
-
-void GomesCellCycleModel::SetModelProperties(boost::shared_ptr<AbstractCellProperty> p_RPh_Type,
-                                             boost::shared_ptr<AbstractCellProperty> p_AC_Type,
-                                             boost::shared_ptr<AbstractCellProperty> p_BC_Type,
-                                             boost::shared_ptr<AbstractCellProperty> p_MG_Type)
-{
-    mp_RPh_Type = p_RPh_Type;
-    mp_AC_Type = p_AC_Type;
-    mp_BC_Type = p_BC_Type;
-    mp_MG_Type = p_MG_Type;
-}
-
-
-void GomesCellCycleModel::EnableModeEventOutput(boost::shared_ptr<ColumnDataWriter> modeWriter, double eventStart,
-                                                unsigned seed, int timeID, std::vector<int> varIDs)
-{
-    mOutput = true;
-    mModeEventWriter = modeWriter;
-    mEventStartTime = eventStart;
-    mSeed = seed;
-    mTimeID = timeID;
-    mVarIDs = varIDs;
-
-}
-
-void GomesCellCycleModel::EnableModelDebugOutput(boost::shared_ptr<ColumnDataWriter> debugWriter)
-{
-    mDebug = true;
-    mDebugWriter = debugWriter;
-
-    mTimeID = mDebugWriter->DefineUnlimitedDimension("Time", "h");
-    mVarIDs.push_back(mDebugWriter->DefineVariable("CellID", "No"));
-    mVarIDs.push_back(mDebugWriter->DefineVariable("CycleDuration", "h"));
-    mVarIDs.push_back(mDebugWriter->DefineVariable("PP", "Percentile"));
-    mVarIDs.push_back(mDebugWriter->DefineVariable("PD", "Percentile"));
-    mVarIDs.push_back(mDebugWriter->DefineVariable("Dieroll", "Percentile"));
-    mVarIDs.push_back(mDebugWriter->DefineVariable("MitoticMode", "Mode"));
-
-    mDebugWriter->EndDefineMode();
-}
-
-void GomesCellCycleModel::EnableSequenceSampler(boost::shared_ptr<AbstractCellProperty> label)
-{
-    mSequenceSampler = true;
-    mp_label_Type = label;
-}
+/******************
+ * UNUSED FUNCTIONS (required for class nonvirtuality, do not remove)
+ ******************/
 
 double GomesCellCycleModel::GetAverageTransitCellCycleTime()
 {
