@@ -116,9 +116,9 @@ int main(int argc, char *argv[])
         sane = 0;
     }
 
-    if (startSeed >= endSeed)
+    if (endSeed < startSeed)
     {
-        ExecutableSupport::PrintError("Bad start & end seeds (arguments, 8, 9). startseed must be < endSeed");
+        ExecutableSupport::PrintError("Bad start & end seeds (arguments, 8, 9). endSeed must not be < startSeed");
         sane = 0;
     }
 

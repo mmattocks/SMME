@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
     std::string directoryString, filenameString;
     int outputMode; //0 = counts; 1 = mitotic mode events; 2 = mitotic mode sequence sampling
     bool debugOutput;
-    unsigned startSeed, endSeed; //fixture 0 = He2012; 1 = Wan2016
+    unsigned startSeed, endSeed;
     double endTime;
     double normalMu, normalSigma, pPP, pPD, pBC, pAC, pMG; //stochastic model parameters
 
@@ -78,9 +78,9 @@ int main(int argc, char *argv[])
         sane = 0;
     }
 
-    if (startSeed >= endSeed)
+    if (endSeed < startSeed)
     {
-        ExecutableSupport::PrintError("Bad start & end seeds (arguments, 5, 6). startseed must be < endSeed");
+        ExecutableSupport::PrintError("Bad start & end seeds (arguments, 5, 6). endSeed must not be < startSeed");
         sane = 0;
     }
 

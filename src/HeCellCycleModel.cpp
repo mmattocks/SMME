@@ -1,27 +1,31 @@
 #include "HeCellCycleModel.hpp"
 
 HeCellCycleModel::HeCellCycleModel() :
-        AbstractSimpleCellCycleModel(), mDeterministic(false), mDebug(false), mOutput(false), mSequenceSampler(false), mSeqSamplerLabelSister(
-                false), mTimeID(), mVarIDs(), mDebugWriter(), mTiLOffset(0.0), mEventStartTime(24.0), mGammaShift(4.0), mGammaShape(
-                2.0), mGammaScale(1.0), mSisterShiftWidth(1), mMitoticModePhase2(8.0), mMitoticModePhase3(15.0), mPhaseShiftWidth(
-                2.0), mLastPhase2(), mLastPhase3(), mPhase1PP(1.0), mPhase1PD(0.0), mPhase2PP(0.2), mPhase2PD(0.4), mPhase3PP(
-                0.2), mPhase3PD(0.0), mMitoticMode(0), mSeed(0), mp_PostMitoticType(), mp_label_Type()
+        AbstractSimpleCellCycleModel(), mDeterministic(false), mOutput(false), mEventStartTime(24.0), mSequenceSampler(
+                false), mSeqSamplerLabelSister(false), mDebug(false), mTimeID(), mVarIDs(), mDebugWriter(), mTiLOffset(
+                0.0), mGammaShift(4.0), mGammaShape(2.0), mGammaScale(1.0), mSisterShiftWidth(1), mMitoticModePhase2(
+                8.0), mMitoticModePhase3(15.0), mPhaseShiftWidth(2.0), mLastPhase2(), mLastPhase3(), mPhase1PP(1.0), mPhase1PD(
+                0.0), mPhase2PP(0.2), mPhase2PD(0.4), mPhase3PP(0.2), mPhase3PD(0.0), mMitoticMode(0), mSeed(0), mTimeDependentCycleDuration(
+                false), mPeakRateTime(), mIncreasingRateSlope(), mDecreasingRateSlope(), mBaseGammaScale(), mp_PostMitoticType(), mp_label_Type()
 {
     mReadyToDivide = true; //He model begins with a first division
 }
 
 HeCellCycleModel::HeCellCycleModel(const HeCellCycleModel& rModel) :
-        AbstractSimpleCellCycleModel(rModel), mDeterministic(rModel.mDeterministic), mDebug(rModel.mDebug), mOutput(
-                rModel.mOutput), mSequenceSampler(rModel.mSequenceSampler), mSeqSamplerLabelSister(
-                rModel.mSeqSamplerLabelSister), mTimeID(rModel.mTimeID), mVarIDs(rModel.mVarIDs), mDebugWriter(
-                rModel.mDebugWriter), mTiLOffset(rModel.mTiLOffset), mEventStartTime(rModel.mEventStartTime), mGammaShift(
-                rModel.mGammaShift), mGammaShape(rModel.mGammaShape), mGammaScale(rModel.mGammaScale), mSisterShiftWidth(
-                rModel.mSisterShiftWidth), mMitoticModePhase2(rModel.mMitoticModePhase2), mMitoticModePhase3(
-                rModel.mMitoticModePhase3), mPhaseShiftWidth(rModel.mPhaseShiftWidth), mLastPhase2(rModel.mLastPhase2), mLastPhase3(
-                rModel.mLastPhase3), mPhase1PP(rModel.mPhase1PP), mPhase1PD(rModel.mPhase1PD), mPhase2PP(
-                rModel.mPhase2PP), mPhase2PD(rModel.mPhase2PD), mPhase3PP(rModel.mPhase3PP), mPhase3PD(
-                rModel.mPhase3PD), mMitoticMode(rModel.mMitoticMode), mSeed(rModel.mSeed), mp_PostMitoticType(
-                rModel.mp_PostMitoticType), mp_label_Type(rModel.mp_label_Type)
+        AbstractSimpleCellCycleModel(rModel), mDeterministic(rModel.mDeterministic), mOutput(rModel.mOutput), mEventStartTime(
+                rModel.mEventStartTime), mSequenceSampler(rModel.mSequenceSampler), mSeqSamplerLabelSister(
+                rModel.mSeqSamplerLabelSister), mDebug(rModel.mDebug), mTimeID(rModel.mTimeID), mVarIDs(rModel.mVarIDs), mDebugWriter(
+                rModel.mDebugWriter), mTiLOffset(rModel.mTiLOffset), mGammaShift(rModel.mGammaShift), mGammaShape(
+                rModel.mGammaShape), mGammaScale(rModel.mGammaScale), mSisterShiftWidth(rModel.mSisterShiftWidth), mMitoticModePhase2(
+                rModel.mMitoticModePhase2), mMitoticModePhase3(rModel.mMitoticModePhase3), mPhaseShiftWidth(
+                rModel.mPhaseShiftWidth), mLastPhase2(rModel.mLastPhase2), mLastPhase3(rModel.mLastPhase3), mPhase1PP(
+                rModel.mPhase1PP), mPhase1PD(rModel.mPhase1PD), mPhase2PP(rModel.mPhase2PP), mPhase2PD(
+                rModel.mPhase2PD), mPhase3PP(rModel.mPhase3PP), mPhase3PD(rModel.mPhase3PD), mMitoticMode(
+                rModel.mMitoticMode), mSeed(rModel.mSeed), mTimeDependentCycleDuration(
+                rModel.mTimeDependentCycleDuration), mPeakRateTime(rModel.mPeakRateTime), mIncreasingRateSlope(
+                rModel.mIncreasingRateSlope), mDecreasingRateSlope(rModel.mDecreasingRateSlope), mBaseGammaScale(
+                rModel.mBaseGammaScale), mp_PostMitoticType(rModel.mp_PostMitoticType), mp_label_Type(
+                rModel.mp_label_Type)
 {
 }
 
@@ -38,8 +42,31 @@ void HeCellCycleModel::SetCellCycleDuration()
      * CELL CYCLE DURATION RANDOM VARIABLE
      *************************************/
 
-    //He cell cycle length determined by shifted gamma distribution reflecting 4 hr refractory period followed by gamma pdf
-    mCellCycleDuration = mGammaShift + p_random_number_generator->GammaRandomDeviate(mGammaShape, mGammaScale);
+    if (!mTimeDependentCycleDuration) //Normal operation, cell cycle length stays constant
+    {
+        //He cell cycle length determined by shifted gamma distribution reflecting 4 hr refractory period followed by gamma pdf
+        mCellCycleDuration = mGammaShift + p_random_number_generator->GammaRandomDeviate(mGammaShape, mGammaScale);
+    }
+
+    /****
+     * Variable cycle length
+     * Give -ve mIncreasingRateSlope and +ve mDecreasingRateSlope,
+     * cell cycle length linearly declines (increasing rate), then increases, switching at mPeakRateTime
+     ****/
+    else
+    {
+        double currTime = SimulationTime::Instance()->GetTime();
+        if (currTime <= mPeakRateTime)
+        {
+            mGammaScale = mBaseGammaScale * currTime * mIncreasingRateSlope;
+        }
+        if (currTime > mPeakRateTime)
+        {
+            mGammaScale = (mBaseGammaScale * mPeakRateTime * mIncreasingRateSlope)
+                    + (mBaseGammaScale * (currTime - mPeakRateTime) * mDecreasingRateSlope);
+        }
+    }
+
 }
 
 void HeCellCycleModel::ResetForDivision()
@@ -177,6 +204,36 @@ void HeCellCycleModel::ResetForDivision()
 
 }
 
+void HeCellCycleModel::Initialise()
+{
+    if (mTiLOffset <= 0) //the "regular" case, set cycle duration normally
+    {
+        SetCellCycleDuration();
+    }
+
+    if (mTiLOffset > 0.0) //if the TiL is > 0, the first division has already occurred
+    {
+        mReadyToDivide = false;
+
+        RandomNumberGenerator* p_random_number_generator = RandomNumberGenerator::Instance();
+
+        /**
+         * This calculation "runs time forward" by subtracting appropriately generated cell lengths from TiLOffset
+         *Ultimately c is subtracted from a final cell length calculation to give the appropriate reduced cycle length
+         **/
+
+        double c = mTiLOffset;
+        while (c > 0)
+        {
+            c = c - (mGammaShift + p_random_number_generator->GammaRandomDeviate(mGammaShape, mGammaScale));
+        }
+
+        mCellCycleDuration = (mGammaShift + p_random_number_generator->GammaRandomDeviate(mGammaShape, mGammaScale))
+                + c;
+    }
+
+}
+
 void HeCellCycleModel::InitialiseDaughterCell()
 {
     RandomNumberGenerator* p_random_number_generator = RandomNumberGenerator::Instance();
@@ -240,17 +297,6 @@ void HeCellCycleModel::SetModelParameters(double tiLOffset, double mitoticModePh
     mGammaShape = gammaShape;
     mGammaScale = gammaScale;
     mSisterShiftWidth = sisterShift;
-
-    if (mTiLOffset > 0.0)
-    {
-        mReadyToDivide = false; //if the TiL is > 0, the first division has already occurred
-        /*decrease cell cycle duration by the approximate %age implied by the TiL value: calculation takes mTilOffset modulo mean cycle length
-         & decreases the present mCellCycleDuration by this value divided by mean cycle length*/
-        mCellCycleDuration = mCellCycleDuration
-                * (1
-                        - (std::fmod(mTiLOffset, (mGammaShift + mGammaShape * mGammaScale))
-                                / (mGammaShift + mGammaShape * mGammaScale)));
-    }
 }
 
 void HeCellCycleModel::SetDeterministicMode(double tiLOffset, double mitoticModePhase2, double mitoticModePhase3,
@@ -266,17 +312,16 @@ void HeCellCycleModel::SetDeterministicMode(double tiLOffset, double mitoticMode
     mGammaShape = gammaShape;
     mGammaScale = gammaScale;
     mSisterShiftWidth = sisterShift;
+}
 
-    if (mTiLOffset > 0.0)
-    {
-        mReadyToDivide = false; //if the TiL is > 0, the first division has already occurred
-        /*decrease cell cycle duration by the approximate %age implied by the TiL value: calculation takes mTilOffset modulo mean cycle length
-         & decreases the present mCellCycleDuration by this value divided by mean cycle length*/
-        mCellCycleDuration = mCellCycleDuration
-                * (1
-                        - (std::fmod(mTiLOffset, (mGammaShift + mGammaShape * mGammaScale))
-                                / (mGammaShift + mGammaShape * mGammaScale)));
-    }
+void HeCellCycleModel::SetTimeDependentCycleDuration(double peakRateTime, double increasingSlope,
+                                                     double decreasingSlope)
+{
+    mTimeDependentCycleDuration = true;
+    mPeakRateTime = peakRateTime;
+    mIncreasingRateSlope = increasingSlope;
+    mDecreasingRateSlope = decreasingSlope;
+    mBaseGammaScale = mGammaScale;
 }
 
 void HeCellCycleModel::SetPostMitoticType(boost::shared_ptr<AbstractCellProperty> p_PostMitoticType)

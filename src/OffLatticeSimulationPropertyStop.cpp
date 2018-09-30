@@ -1,4 +1,4 @@
-#include "../../../projects/ISP/src/OffLatticeSimulationPropertyStop.hpp"
+#include "OffLatticeSimulationPropertyStop.hpp"
 
 #include <boost/make_shared.hpp>
 

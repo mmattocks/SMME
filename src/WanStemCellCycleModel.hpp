@@ -1,5 +1,5 @@
-#ifndef BOIJECELLCYCLEMODEL_HPP_
-#define BOIJECELLCYCLEMODEL_HPP_
+#ifndef WANSTEMCELLCYCLEMODEL_HPP_
+#define WANSTEMCELLCYCLEMODEL_HPP_
 
 #include "AbstractSimpleCellCycleModel.hpp"
 #include "RandomNumberGenerator.hpp"
@@ -8,22 +8,19 @@
 #include "SmartPointers.hpp"
 #include "ColumnDataWriter.hpp"
 #include "LogFile.hpp"
-#include "CellLabel.hpp"
 
-#include "BoijeRetinalNeuralFates.hpp"
+#include "HeCellCycleModel.hpp"
 
-
-/*******************************
-* BOIJE CELL CYCLE MODEL
-* As described in Boije et al. 2015 [Boije2015] doi: 10.1016/j.devcel.2015.08.011
-*
-* USE: By default, BoijeCellCycleModels are constructed with the parameters reported in [Boije2015].
-* In normal use, the model steps through three phases of probabilistic transcription factor signalling.
-* These signals determine the mitotic mode and the fate of offspring.
-*
-* NB: the Boije model is purely generational and assumes a generation time of 1; time in Boije simulations
-* thus represents generation number rather than proper time. Refactor for use with simulations that refer
-* to clocktime!!
+/***********************************
+ * WAN STEM CELL CYCLE MODEL
+ * A simple model standing in for the CMZ "stem cells" described in'
+ * Wan et al. 2016 [Wan2016]
+ *
+ * USE: By default, WanStemCellCycleModels consistently divide asymmetrically.
+ * InitialiseDaughterCell() marks offspring for RPC fate
+ * So-marked cells are given HeCellCycleModels for their next division.
+ *
+ * Change default model parameters with SetModelParameters(<params>);
  *
  * 2 per-model-event output modes:
  * EnableModeEventOutput() enables mitotic mode event logging-all cells will write to the singleton log file
@@ -34,9 +31,9 @@
  * 1 mitotic-event-sequence sampler (only samples one "path" through the lineage):
  * EnableSequenceSampler() - one "sequence" of progenitors writes mitotic event type to a string in the singleton log file
  *
- *********************************/
+ ************************************/
 
-class BoijeCellCycleModel : public AbstractSimpleCellCycleModel
+class WanStemCellCycleModel : public AbstractSimpleCellCycleModel
 {
     friend class TestSimpleCellCycleModels;
 
@@ -55,44 +52,38 @@ private:
     {
         archive & boost::serialization::base_object<AbstractSimpleCellCycleModel>(*this);
 
-        SerializableSingleton<RandomNumberGenerator>* p_wrapper = RandomNumberGenerator::Instance()->GetSerializationWrapper();
+        SerializableSingleton<RandomNumberGenerator>* p_wrapper =
+                RandomNumberGenerator::Instance()->GetSerializationWrapper();
         archive & p_wrapper;
         archive & mCellCycleDuration;
-        archive & mGeneration;
     }
 
     //Private write functions for models
     void WriteModeEventOutput();
-    void WriteDebugData(double atoh7RV, double ptf1aRV, double ngRV);
+    void WriteDebugData();
 
 protected:
     //mode/output variables
     bool mOutput;
     double mEventStartTime;
-    bool mSequenceSampler;
-    bool mSeqSamplerLabelSister;
     //debug writer stuff
     bool mDebug;
     int mTimeID;
     std::vector<int> mVarIDs;
     boost::shared_ptr<ColumnDataWriter> mDebugWriter;
     //model parameters and state memory vars
-    unsigned mGeneration;
-    unsigned mPhase2gen;
-    unsigned mPhase3gen;
-    double mprobAtoh7;
-	double mprobPtf1a;
-	double mprobng;
-	bool mAtoh7Signal;
-	bool mPtf1aSignal;
-	bool mNgSignal;
-    unsigned mMitoticMode;
+    bool mRPCfate;
+    double mGammaShift;
+    double mGammaShape;
+    double mGammaScale;
     unsigned mSeed;
-    boost::shared_ptr<AbstractCellProperty> mp_PostMitoticType;
-    boost::shared_ptr<AbstractCellProperty> mp_RGC_Type;
-    boost::shared_ptr<AbstractCellProperty> mp_AC_HC_Type;
-    boost::shared_ptr<AbstractCellProperty> mp_PR_BC_Type;
-    boost::shared_ptr<AbstractCellProperty> mp_label_Type;
+    bool mTimeDependentCycleDuration;
+    double mPeakRateTime;
+    double mIncreasingRateSlope;
+    double mDecreasingRateSlope;
+    double mBaseGammaScale;
+    boost::shared_ptr<AbstractCellProperty> mp_TransitType;
+    std::vector<double> mHeParamVector;
 
     /**
      * Protected copy-constructor for use by CreateCellCycleModel().
@@ -108,86 +99,62 @@ protected:
      *
      * @param rModel the cell cycle model to copy.
      */
-    BoijeCellCycleModel(const BoijeCellCycleModel& rModel);
+    WanStemCellCycleModel(const WanStemCellCycleModel& rModel);
 
 public:
 
     /**
      * Constructor - just a default, mBirthTime is set in the AbstractCellCycleModel class.
      */
-    BoijeCellCycleModel();
+    WanStemCellCycleModel();
 
     /**
-     * SetCellCycleDuration() method to set length of cell cycle (default 1.0 as Boije's model is purely generational)
+     * SetCellCycleDuration() method to set length of cell cycle
      */
     void SetCellCycleDuration();
 
-    /**
+    /**pro
      * Overridden builder method to create new copies of
      * this cell-cycle model.
      *
      * @return new cell-cycle model
      */
     AbstractCellCycleModel* CreateCellCycleModel();
-    
+
     /**
      * Overridden ResetForDivision() method.
      * Contains general mitotic mode logic
      **/
     void ResetForDivision();
-    
+
     /**
      * Overridden InitialiseDaughterCell() method.
+     * Used to apply sister-cell time shifting (cell cycle duration, deterministic phase boundaries)
      * Used to implement asymmetric mitotic mode
      * */
     void InitialiseDaughterCell();
 
-    /**
-     * Sets the cell's generation.
-     *
-     * @param generation the cell's generation
-     **/
-    void SetGeneration(unsigned generation);
-
-    /**
-     * @return the cell's generation.
+    /*Model setup functions for standard He (SetModelParameters) and deterministic alternative (SetDeterministicMode) models
+     * Default parameters are from refits of He et al + deterministic alternatives
+     * He 2012 params: mitoticModePhase2 = 8, mitoticModePhase3 = 15, p1PP = 1, p1PD = 0, p2PP = .2, p2PD = .4, p3PP = .2, p3PD = 0
+     * gammaShift = 4, gammaShape = 2, gammaScale = 1, sisterShift = 1
      */
-    unsigned GetGeneration() const;  
-    
-    /*****************************
-     * Model setup functions:
-     * Set TF signal probabilities with SetModelParameters
-     * Set Postmitotic and specification AbstractCellProperties w/ the relevant functions
-     * By default these are available in BoijeRetinalNeuralFates.hpp
-     *
-     * NB: The Boije model lumps together amacrine & horizontal cells, photoreceptors & bipolar neurons
-     ******************************/
+    void SetModelParameters(double gammaShift = 4, double gammaShape = 2, double gammaScale = 1, std::vector<double> heParamVector = { 8, 15, 1, 0, .2, .4, .2, 0, 4, 2, 1, 1 });
+    void SetTimeDependentCycleDuration(double peakRateTime, double increasingSlope, double decreasingSlope);
 
-    void SetModelParameters(unsigned phase2gen = 3, unsigned phase3gen = 5, double probAtoh7 = 0.32, double probPtf1a = 0.3, double probng = 0.8);
-    void SetPostMitoticType(boost::shared_ptr<AbstractCellProperty> p_PostMitoticType);
-    void SetSpecifiedTypes(boost::shared_ptr<AbstractCellProperty> p_RGC_Type, boost::shared_ptr<AbstractCellProperty> p_AC_HC_Type, boost::shared_ptr<AbstractCellProperty> p_PR_BC_Type);
-    
+    //This should normally be a DifferentiatedCellProliferativeType
+    void SetTransitType(boost::shared_ptr<AbstractCellProperty> p_PostMitoticType);
+
     //Functions to enable per-cell mitotic mode logging for mode rate & sequence sampling fixtures
     //Uses singleton logfile
     void EnableModeEventOutput(double eventStart, unsigned seed);
-    void EnableSequenceSampler(boost::shared_ptr<AbstractCellProperty> label);
 
     //More detailed debug output. Needs a ColumnDataWriter passed to it
     //Only declare ColumnDataWriter directory, filename, etc; do not set up otherwise
     void EnableModelDebugOutput(boost::shared_ptr<ColumnDataWriter> debugWriter);
 
-    /**
-     * Overridden GetAverageTransitCellCycleTime() method.
-     *
-     * @return the average of mMinCellCycleDuration and mMaxCellCycleDuration
-     */
+    //Not used, but must be overwritten lest WanStemCellCycleModels be abstract
     double GetAverageTransitCellCycleTime();
-
-    /**
-     * Overridden GetAverageStemCellCycleTime() method.
-     *
-     * @return the average of mMinCellCycleDuration and mMaxCellCycleDuration
-     */
     double GetAverageStemCellCycleTime();
 
     /**
@@ -200,6 +167,6 @@ public:
 
 #include "SerializationExportWrapper.hpp"
 // Declare identifier for the serializer
-CHASTE_CLASS_EXPORT(BoijeCellCycleModel)
+CHASTE_CLASS_EXPORT(WanStemCellCycleModel)
 
-#endif /*BOIJECELLCYCLEMODEL_HPP_*/
+#endif /*WANSTEMCELLCYCLEMODEL_HPP_*/

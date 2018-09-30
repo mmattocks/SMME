@@ -1,21 +1,21 @@
 #include "GomesCellCycleModel.hpp"
 
 GomesCellCycleModel::GomesCellCycleModel() :
-        AbstractSimpleCellCycleModel(), mDebug(false), mOutput(false), mSequenceSampler(false), mSeqSamplerLabelSister(
-                false), mTimeID(), mVarIDs(), mDebugWriter(), mModeEventWriter(), mEventStartTime(), mNormalMu(3.9716), mNormalSigma(
-                0.32839), mPP(.055), mPD(0.221), mpBC(.128), mpAC(.106), mpMG(.028), mMitoticMode(), mSeed(), mp_PostMitoticType(), mp_RPh_Type(), mp_BC_Type(), mp_AC_Type(), mp_MG_Type(), mp_label_Type()
+        AbstractSimpleCellCycleModel(), mOutput(false), mEventStartTime(), mSequenceSampler(false), mSeqSamplerLabelSister(
+                false), mDebug(false), mTimeID(), mVarIDs(), mDebugWriter(), mNormalMu(3.9716), mNormalSigma(0.32839), mPP(.055), mPD(
+                0.221), mpBC(.128), mpAC(.106), mpMG(.028), mMitoticMode(), mSeed(), mp_PostMitoticType(), mp_RPh_Type(), mp_BC_Type(), mp_AC_Type(), mp_MG_Type(), mp_label_Type()
 {
 }
 
 GomesCellCycleModel::GomesCellCycleModel(const GomesCellCycleModel& rModel) :
-        AbstractSimpleCellCycleModel(rModel), mDebug(rModel.mDebug), mOutput(rModel.mOutput), mSequenceSampler(
-                rModel.mSequenceSampler), mSeqSamplerLabelSister(rModel.mSeqSamplerLabelSister), mTimeID(
-                rModel.mTimeID), mVarIDs(rModel.mVarIDs), mDebugWriter(rModel.mDebugWriter), mModeEventWriter(
-                rModel.mModeEventWriter), mEventStartTime(rModel.mEventStartTime), mNormalMu(rModel.mNormalMu), mNormalSigma(
-                rModel.mNormalSigma), mPP(rModel.mPP), mPD(rModel.mPD), mpBC(rModel.mpBC), mpAC(rModel.mpAC), mpMG(
-                rModel.mpMG), mMitoticMode(rModel.mMitoticMode), mSeed(rModel.mSeed), mp_PostMitoticType(
-                rModel.mp_PostMitoticType), mp_RPh_Type(rModel.mp_RPh_Type), mp_BC_Type(rModel.mp_BC_Type), mp_AC_Type(
-                rModel.mp_AC_Type), mp_MG_Type(rModel.mp_MG_Type), mp_label_Type(rModel.mp_label_Type)
+        AbstractSimpleCellCycleModel(rModel), mOutput(rModel.mOutput), mEventStartTime(
+                rModel.mEventStartTime), mSequenceSampler(rModel.mSequenceSampler), mSeqSamplerLabelSister(
+                rModel.mSeqSamplerLabelSister), mDebug(rModel.mDebug), mTimeID(rModel.mTimeID), mVarIDs(rModel.mVarIDs), mDebugWriter(
+                rModel.mDebugWriter), mNormalMu(rModel.mNormalMu), mNormalSigma(rModel.mNormalSigma), mPP(rModel.mPP), mPD(
+                rModel.mPD), mpBC(rModel.mpBC), mpAC(rModel.mpAC), mpMG(rModel.mpMG), mMitoticMode(rModel.mMitoticMode), mSeed(
+                rModel.mSeed), mp_PostMitoticType(rModel.mp_PostMitoticType), mp_RPh_Type(rModel.mp_RPh_Type), mp_BC_Type(
+                rModel.mp_BC_Type), mp_AC_Type(rModel.mp_AC_Type), mp_MG_Type(rModel.mp_MG_Type), mp_label_Type(
+                rModel.mp_label_Type)
 {
 }
 
@@ -26,6 +26,10 @@ AbstractCellCycleModel* GomesCellCycleModel::CreateCellCycleModel()
 
 void GomesCellCycleModel::SetCellCycleDuration()
 {
+    /**************************************
+     * CELL CYCLE DURATION RANDOM VARIABLE
+     *************************************/
+
     RandomNumberGenerator* p_random_number_generator = RandomNumberGenerator::Instance();
 
     //Gomes cell cycle length determined by lognormal distribution with default mean 56 hr, std 18.9 hrs.
@@ -46,13 +50,13 @@ void GomesCellCycleModel::ResetForDivision()
      * MITOTIC MODE RANDOM VARIABLE
      ******************************/
     //initialise mitoticmode random variable, set mitotic mode appropriately after comparing to mode probability array
-    double mitoticModeDie = p_random_number_generator->ranf();
+    double mitoticModeRV = p_random_number_generator->ranf();
 
-    if (mitoticModeDie > mPP && mitoticModeDie <= mPP + mPD)
+    if (mitoticModeRV > mPP && mitoticModeRV <= mPP + mPD)
     {
         mMitoticMode = 1;
     }
-    if (mitoticModeDie > mPP + mPD)
+    if (mitoticModeRV > mPP + mPD)
     {
         mMitoticMode = 2;
     }
@@ -65,7 +69,7 @@ void GomesCellCycleModel::ResetForDivision()
 
     if (mDebug)
     {
-        WriteDebugData(mitoticModeDie);
+        WriteDebugData(mitoticModeRV);
     }
 
     if (mOutput)
@@ -85,23 +89,23 @@ void GomesCellCycleModel::ResetForDivision()
     {
         mpCell->SetCellProliferativeType(mp_PostMitoticType);
         mCellCycleDuration = DBL_MAX;
-        /*********************
-         * SPECIFICATION RULES
-         ********************/
-        double specificationDie = p_random_number_generator->ranf();
-        if (specificationDie <= mpMG)
+        /*****************************
+         * SPECIFICATION RANDOM VARIABLE
+         *****************************/
+        double specificationRV = p_random_number_generator->ranf();
+        if (specificationRV <= mpMG)
         {
             mpCell->AddCellProperty(mp_MG_Type);
         }
-        if (specificationDie > mpMG && specificationDie <= mpMG + mpAC)
+        if (specificationRV > mpMG && specificationRV <= mpMG + mpAC)
         {
             mpCell->AddCellProperty(mp_AC_Type);
         }
-        if (specificationDie > mpMG + mpAC && specificationDie <= mpMG + mpAC + mpBC)
+        if (specificationRV > mpMG + mpAC && specificationRV <= mpMG + mpAC + mpBC)
         {
             mpCell->AddCellProperty(mp_BC_Type);
         }
-        if (specificationDie > mpMG + mpAC + mpBC)
+        if (specificationRV > mpMG + mpAC + mpBC)
         {
             mpCell->AddCellProperty(mp_RPh_Type);
         }
@@ -139,7 +143,6 @@ void GomesCellCycleModel::InitialiseDaughterCell()
      * PD-type division
      **********/
 
-
     if (mMitoticMode == 1)
     {
         RandomNumberGenerator* p_random_number_generator = RandomNumberGenerator::Instance();
@@ -148,20 +151,20 @@ void GomesCellCycleModel::InitialiseDaughterCell()
         /*********************
          * SPECIFICATION RULES
          ********************/
-        double specificationDie = p_random_number_generator->ranf();
-        if (specificationDie <= mpMG)
+        double specificationRV = p_random_number_generator->ranf();
+        if (specificationRV <= mpMG)
         {
             mpCell->AddCellProperty(mp_MG_Type);
         }
-        if (specificationDie > mpMG && specificationDie <= mpMG + mpAC)
+        if (specificationRV > mpMG && specificationRV <= mpMG + mpAC)
         {
             mpCell->AddCellProperty(mp_AC_Type);
         }
-        if (specificationDie > mpMG + mpAC && specificationDie <= mpMG + mpAC + mpBC)
+        if (specificationRV > mpMG + mpAC && specificationRV <= mpMG + mpAC + mpBC)
         {
             mpCell->AddCellProperty(mp_BC_Type);
         }
-        if (specificationDie > mpMG + mpAC + mpBC)
+        if (specificationRV > mpMG + mpAC + mpBC)
         {
             mpCell->AddCellProperty(mp_RPh_Type);
         }
@@ -227,7 +230,6 @@ void GomesCellCycleModel::EnableSequenceSampler(boost::shared_ptr<AbstractCellPr
     mSequenceSampler = true;
     mp_label_Type = label;
 }
-
 
 void GomesCellCycleModel::EnableModelDebugOutput(boost::shared_ptr<ColumnDataWriter> debugWriter)
 {

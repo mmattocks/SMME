@@ -59,16 +59,22 @@ private:
         archive & mCellCycleDuration;
     }
 
+    //Private write functions for models
+    void WriteModeEventOutput();
+    void WriteDebugData(double percentile);
+
 protected:
-    bool mDebug;
+    //mode/output variables
     bool mOutput;
+    double mEventStartTime;
     bool mSequenceSampler;
     bool mSeqSamplerLabelSister;
+    //debug writer stuff
+    bool mDebug;
     int mTimeID;
     std::vector<int> mVarIDs;
     boost::shared_ptr<ColumnDataWriter> mDebugWriter;
-    boost::shared_ptr<ColumnDataWriter> mModeEventWriter;
-    double mEventStartTime;
+    //model parameters and state memory vars
     double mNormalMu;
     double mNormalSigma;
     double mPP;
@@ -156,9 +162,6 @@ public:
     //More detailed debug output. Needs a ColumnDataWriter passed to it
     //Only declare ColumnDataWriter directory, filename, etc; do not set up otherwise
     void EnableModelDebugOutput(boost::shared_ptr<ColumnDataWriter> debugWriter);
-
-    void WriteModeEventOutput();
-    void WriteDebugData(double percentile);
 
     //Not used, but must be overwritten lest GomesCellCycleModels be abstract
     double GetAverageTransitCellCycleTime();

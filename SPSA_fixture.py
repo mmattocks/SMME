@@ -51,7 +51,7 @@ directory_name = "SPSA"
 file_name_he = "HeSPSA"
 file_name_det = "DetSPSA"
 log_name = "HeSPSAOutput"
-deterministic_modes = [1, 0] #1=enabled
+deterministic_modes = [1] #1=enabled
 count_output_mode = 0 #0=lineage counts;1=mitotic event logging;2=sequence sampling
 event_output_mode = 1
 fixture = 0 #0=He 2012;1=Wan 2016

@@ -9,11 +9,12 @@
 #include "ColumnDataWriter.hpp"
 #include "LogFile.hpp"
 #include "CellLabel.hpp"
+
 #include "HeAth5Mo.hpp"
 
 /***********************************
  * HE CELL CYCLE MODEL
- * As described in He et al. 2012 [He2012] doi: 10.1016/j.neuron.2012.06.033.
+ * As described in He et al. 2012 [He2012] doi: 10.1016/j.neuron.2012.06.033
  *
  * USE: By default, HeCellCycleModels are constructed with the parameter fit reported in [He2012].
  * In normal use, the model steps through three phases of mitotic mode probability parameterisation.
@@ -67,17 +68,17 @@ private:
 protected:
     //mode/output variables
     bool mDeterministic;
-    bool mDebug;
     bool mOutput;
+    double mEventStartTime;
     bool mSequenceSampler;
     bool mSeqSamplerLabelSister;
     //debug writer stuff
+    bool mDebug;
     int mTimeID;
     std::vector<int> mVarIDs;
     boost::shared_ptr<ColumnDataWriter> mDebugWriter;
     //model parameters and state memory vars
     double mTiLOffset;
-    double mEventStartTime;
     double mGammaShift;
     double mGammaShape;
     double mGammaScale;
@@ -95,6 +96,11 @@ protected:
     double mPhase3PD;
     unsigned mMitoticMode;
     unsigned mSeed;
+    bool mTimeDependentCycleDuration;
+    double mPeakRateTime;
+    double mIncreasingRateSlope;
+    double mDecreasingRateSlope;
+    double mBaseGammaScale;
     boost::shared_ptr<AbstractCellProperty> mp_PostMitoticType;
     boost::shared_ptr<AbstractCellProperty> mp_label_Type;
 
@@ -141,6 +147,12 @@ public:
     void ResetForDivision();
 
     /**
+     * Overridden Initialise() method
+     * Used to give an appropriate mCellCycleDuration to cells w/ TiL offsets
+     **/
+    void Initialise();
+
+    /**
      * Overridden InitialiseDaughterCell() method.
      * Used to apply sister-cell time shifting (cell cycle duration, deterministic phase boundaries)
      * Used to implement asymmetric mitotic mode
@@ -159,6 +171,7 @@ public:
     void SetDeterministicMode(double tiLOffset = 0, double mitoticModePhase2 = 8, double mitoticModePhase3 = 15,
                               double phaseShiftWidth = 1, double gammaShift = 4, double gammaShape = 2,
                               double gammaScale = 1, double sisterShift = 1);
+    void SetTimeDependentCycleDuration(double peakRateTime, double increasingSlope, double decreasingSlope);
 
     //This should normally be a DifferentiatedCellProliferativeType
     void SetPostMitoticType(boost::shared_ptr<AbstractCellProperty> p_PostMitoticType);
