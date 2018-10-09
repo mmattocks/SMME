@@ -18,13 +18,13 @@ if not(os.path.isfile(executable)):
 # SPSA COEFFICIENTS
 #####################
 
-a_s = .025
-c_s = .5
+a_s = .019
+c_s = .1
 
-a_d = .001
-c_d = .25
+a_d = .0019
+c_d = .1
 
-A = 7 #10% of expected # iterations
+A = 20 #10% of expected # iterations
 alpha = .602
 gamma = .101
 
@@ -32,7 +32,7 @@ gamma = .101
 # SPSA & AIC UTILITY VARS
 ###########################
 
-max_iterations = 69
+max_iterations = 199
 number_comparisons = 3030 #total number of comparison points between model output and empirical data (1000 per induction time, 10 per rate mode)
 number_comparisons_per_induction = 1000
 error_samples = 5000 #number of samples to draw when estimating plausibility interval for simulations
@@ -45,13 +45,13 @@ error_samples = 5000 #number of samples to draw when estimating plausibility int
 #No. lineages per loss function run
 #unique sequence of RNG results for each lineage
 start_seed = 0
-end_seed = 999
-rate_end_seed = 249
+end_seed = 249
+rate_end_seed = 99
 directory_name = "SPSA"
 file_name_he = "HeSPSA"
 file_name_det = "DetSPSA"
 log_name = "HeSPSAOutput"
-deterministic_modes = [1] #1=enabled
+deterministic_modes = [0, 1] #1=det. mode enabled
 count_output_mode = 0 #0=lineage counts;1=mitotic event logging;2=sequence sampling
 event_output_mode = 1
 fixture = 0 #0=He 2012;1=Wan 2016
@@ -90,9 +90,9 @@ he_model_params = 15
 #Phase boundary shift parameters
 phase_1_shape = 3
 phase_1_scale = 2
-phase_2_shape = 3
+phase_2_shape = 2
 phase_2_scale = 2
-phase_sister_shift_widths = .8
+phase_sister_shift_widths = .25
 phase_offset = 0
 det_model_params = 13
 
@@ -101,35 +101,12 @@ stochastic_theta_zero = np.array([mitotic_mode_phase_2, mitotic_mode_phase_3, ph
 determinsitic_theta_zero = np.array([phase_1_shape, phase_1_scale, phase_2_shape, phase_2_scale, phase_sister_shift_widths, phase_offset])
 
 #scales ak gain sequence for probability variables
-prob_scale_vector = np.array([ 1, 1, .05, .05, .05])
-shift_scale_vector = np.array([1, 1, 1, 1, .1, 1])
+prob_scale_vector = np.array([ 1, 1, .1, .1, .1])
+shift_scale_vector = np.array([1, 1, 1, 1, 1, 3])
 
 ##############################
 # HE ET AL EMPIRICAL RESULTS
 ##############################
-#no. of lineages observed per induction timepoint/event group
-lineages_sampled_24 = 64
-lineages_sampled_32 = 169
-lineages_sampled_48 = 163
-lineages_sampled_events = 60
-
-lineages_sampled_list = [lineages_sampled_24,lineages_sampled_32,lineages_sampled_48]
-
-#binned histograms of counts at each timepoint
-he_24_counts = np.array([ 0, 0, 1, 0, 1, 2, 0, 7, 4, 9, 6, 5, 5, 6, 5, 5, 1, 2, 2, 2, 0, 1 ])
-he_32_counts = np.array([ 6, 20, 25, 22, 24, 17, 11, 7, 8, 5, 6, 3, 1, 6, 4, 1, 0, 0, 0, 2, 0, 0, 0, 1 ])
-he_48_counts = np.array([ 59, 86, 2, 12, 1, 2, 0, 1 ])
-
-#lineages giving mitotic mode events in 2 hr bins, starting at 30hr, from 60 empirically followed lineages
-he_PP_events = np.array([8,23,16,10,3,1,0,0,0,0])
-he_PD_events = np.array([2,21,7,10,2,0,0,0,0,0])
-he_DD_events = np.array([0,3,13,26,33,29,16,3,4,0])
-
-prob_empirical_PP = np.array((he_PP_events / lineages_sampled_events)/5)
-prob_empirical_PD = np.array((he_PD_events / lineages_sampled_events)/5)
-prob_empirical_DD = np.array((he_DD_events / lineages_sampled_events)/5)
-
-events_list = [prob_empirical_PP,prob_empirical_PD,prob_empirical_DD]
 
 count_bin_sequence = np.arange(1,32,1)
 count_x_sequence = np.arange(1,31,1)
@@ -139,20 +116,51 @@ rate_bin_sequence = np.arange(30,85,5)
 rate_x_sequence = np.arange(30,80,5)
 rate_trim_value = 10
 
-#extend histogram to 1000
-he_24_AIC_array = np.concatenate([he_24_counts, np.zeros(int(number_comparisons_per_induction) - he_24_counts.size)])
-he_32_AIC_array = np.concatenate([he_32_counts, np.zeros(int(number_comparisons_per_induction) - he_32_counts.size)])
-he_48_AIC_array = np.concatenate([he_48_counts, np.zeros(int(number_comparisons_per_induction) - he_48_counts.size)])
+#Count probability arrays
+raw_counts = np.loadtxt('/home/main/git/chaste/projects/ISP/empirical_data/empirical_counts.csv', skiprows=1, usecols=(3,4,5,6,7,8,9,10)) #collect the per-cell-type counts
+raw_counts_24 = raw_counts[0:64,:]
+raw_counts_32 = raw_counts[64:233,:]
+raw_counts_48 = raw_counts[233:396,:]
 
-#Arrays containing He et al. empirical probabilities for counts 1-1000
-prob_empirical_24 = np.array(he_24_AIC_array / lineages_sampled_24)
-prob_empirical_32 = np.array(he_32_AIC_array / lineages_sampled_32)
-prob_empirical_48 = np.array(he_48_AIC_array / lineages_sampled_48)
+prob_24,bin_edges = np.histogram(np.sum(raw_counts_24,axis=1),count_bin_sequence,density=True) #obtain probability density histogram for counts, retabulating by summing across types
+prob_32,bin_edges = np.histogram(np.sum(raw_counts_32,axis=1),count_bin_sequence,density=True)
+prob_48,bin_edges = np.histogram(np.sum(raw_counts_48,axis=1),count_bin_sequence,density=True)
 
-empirical_prob_list = [prob_empirical_24, prob_empirical_32, prob_empirical_48]
+#extend histogram to 1000 - allows large lineages of some iterates to be included in AIC comparison
+prob_empirical_24 = np.concatenate([prob_24, np.zeros(int(number_comparisons_per_induction) - prob_24.size)])
+prob_empirical_32 = np.concatenate([prob_32, np.zeros(int(number_comparisons_per_induction) - prob_32.size)])
+prob_empirical_48 = np.concatenate([prob_48, np.zeros(int(number_comparisons_per_induction) - prob_48.size)])
+
+count_prob_list = [prob_empirical_24, prob_empirical_32, prob_empirical_48]
+
+#no. of lineages observed per induction timepoint/event group
+lineages_sampled_24 = 64
+lineages_sampled_32 = 169
+lineages_sampled_48 = 163
+lineages_sampled_events = 60
+lineages_sampled_list = [lineages_sampled_24,lineages_sampled_32,lineages_sampled_48]
+
+#Mitotic mode rate probability arrays
+raw_events = np.loadtxt('/home/main/git/chaste/projects/ISP/empirical_data/empirical_lineages.csv', skiprows=1, usecols=(3,5,8))
+observed_events = raw_events[np.where(raw_events[:,2]==1)] #exclude any mitosis whose time was too early for recording
+
+observed_PP = observed_events[np.where(observed_events[:,0]==0)]
+observed_PD = observed_events[np.where(observed_events[:,0]==1)]
+observed_DD = observed_events[np.where(observed_events[:,0]==2)]
+
+histo_PP,bin_edges = np.histogram(observed_PP,rate_bin_sequence,density=False)
+histo_PD,bin_edges = np.histogram(observed_PD,rate_bin_sequence,density=False)
+histo_DD,bin_edges = np.histogram(observed_DD,rate_bin_sequence,density=False)
+
+#hourly per-lineage probabilities- NOT probability density function
+prob_empirical_PP = np.array((histo_PP/lineages_sampled_events)/5)
+prob_empirical_PD = np.array((histo_PD/lineages_sampled_events)/5)
+prob_empirical_DD = np.array((histo_DD/lineages_sampled_events)/5)
+
+event_prob_list = [prob_empirical_PP,prob_empirical_PD,prob_empirical_DD]
 
 #setup the log file, appending to any existing results
-log_filename = "/home/main/git/chaste/projects/ISP/testoutput/" +directory_name +"/" + log_name
+log_filename = "/home/main/git/chaste/projects/ISP/python_fixtures/testoutput/" +directory_name +"/" + log_name
 os.makedirs(os.path.dirname(log_filename), exist_ok=True)
 
 log = open(log_filename,"w")
@@ -164,11 +172,15 @@ plt.ion()
 fig, ((plt0, plt1, plt2),(plt3, plt4, plt5)) = plt.subplots(2,3,figsize=(12,6))
 plot_list = [plt0,plt1,plt2,plt3,plt4,plt5]
 
+
 def main():
-    global theta_spsa, a,c,file_name,scale_vector
+    global theta_spsa, a,c,file_name,scale_vector,end_seed,rate_end_seed,alpha,gamma
     
     for m in range(0,len(deterministic_modes)):
         
+        #traceable RNG
+        p_RNG = np.random.RandomState(seed=786)
+
         deterministic_mode = deterministic_modes[m]
         if deterministic_mode == 0:
             theta_spsa = stochastic_theta_zero
@@ -195,18 +207,29 @@ def main():
         k=0
        
         while k <= max_iterations:
+            if k == 0:
+                end_seed = 249
+                rate_end_seed = 99
         
-            #@defined iterate, increase # of seeds to decrease RNG noise
-            if k == 50:
+            #@defined iterate, increase # of seed to decrease RNG noise to low level
+            if k == 169:
+                end_seed = 999
+                rate_end_seed = 249
+        
+        
+            #@defined iterate, increase # of seeds to decrease RNG noise to close to nil, switch to asymptotically optimal alpha and gamma
+            if k == 189:
                 end_seed = 4999
                 rate_end_seed = 1249
+                alpha = 1
+                gamma = (1/6)
             
             #write the parameter set to be evaluated to file
             if deterministic_mode == 0: log.write(str(k) + "\t" + str(theta_spsa[0]) + "\t" + str(theta_spsa[1]) + "\t" + str(theta_spsa[2]) + "\t" + str(theta_spsa[3]) + "\t" + str(theta_spsa[4]) + "\n")
             if deterministic_mode == 1: log.write(str(k) + "\t" + str(theta_spsa[0]) + "\t" + str(theta_spsa[1]) + "\t" + str(theta_spsa[2]) + "\t" + str(theta_spsa[3]) + "\t" + str(theta_spsa[4])+ "\t" + str(theta_spsa[5]) + "\n")
         
             #populate the deltak perturbation vector with samples from a .5p bernoulli +1 -1 distribution
-            delta_k = bernoulli.rvs(.5, size=theta_spsa.size)
+            delta_k = bernoulli.rvs(.5, size=theta_spsa.size, random_state=p_RNG)
             delta_k[delta_k == 0] = -1
         
             ak = a / ((A + k + 1)**alpha) #calculate ak from gain sequence
@@ -235,7 +258,7 @@ def main():
             theta_spsa = project_theta(theta_spsa, np.zeros(theta_spsa.size), deterministic_mode)
 
             k+=1
-    
+        
         #write final result and close log
         if deterministic_mode == 0: log.write(str(k) + "\t" + str(theta_spsa[0]) + "\t" + str(theta_spsa[1]) + "\t" + str(theta_spsa[2]) + "\t" + str(theta_spsa[3]) + "\t" + str(theta_spsa[4]) + "\n")
         if deterministic_mode == 1: log.write(str(k) + "\t" + str(theta_spsa[0]) + "\t" + str(theta_spsa[1]) + "\t" + str(theta_spsa[2]) + "\t" + str(theta_spsa[3]) + "\t" + str(theta_spsa[4])+ "\t" + str(theta_spsa[5]) + "\n")
@@ -249,19 +272,16 @@ def project_theta(theta, boundary, deterministic_mode):
 # This takes care of the upper bound
 
     #project all negative parameters back into bounded space
-    for i in range(0, theta.size-1): #exclude offset param
-        if deterministic_mode == False:
-            if theta[i] < boundary[i]: theta[i] = boundary[i]
-        if deterministic_mode == True:
-            if theta[i] < boundary[i]: theta[i] = boundary[i] + 0.1 #prevents non->0 arguments for deterministic mode
-
-        i+=1
-
     if deterministic_mode == False:
+        for i in range(0, theta.size):
+            if i == 0:
+                if theta[i] < boundary[i] + 4.0: theta[i] = boundary[i] + 4.0 #project mitotic_mode_phase_2 to a minimum of 4- below this param has no effect (due to refractory period after first division)
+            else:
+                if theta[i] < boundary[i]: theta[i] = boundary[i]
+                
         #if PP3 exceeds 1-boundary, project back to 1-boundary
         if theta[4] > 1 - boundary[4]: theta[4] = 1 - boundary[4]
-    
-    
+        
         if theta[2] + theta[3] > 1 - boundary[2]: #if pPP2 + pPD2 gives a total beyond the current boundary-reduced total of 1.0
         
             if theta[2] > (1 - 2 * boundary[2]) and theta[2] <= theta[3] - (1 - 2 * boundary[2]): # these (PP,PD) points will project into negative PD space
@@ -279,10 +299,19 @@ def project_theta(theta, boundary, deterministic_mode):
                 lengthv1 = 2
                 theta[2] = (dot_product / lengthv1) - boundary[2]
                 theta[3] = (1 - dot_product / lengthv1) - boundary[2]
-            
+
+    if deterministic_mode == True:
+        for i in range(0, theta.size-1): #exclude offset param
+            if theta[i] < boundary[i]: theta[i] = boundary[i] + 0.1 #prevents non->0 arguments for deterministic mode
+
+        #projects sister shift value such that 95% of sister shift values will be less than smallest mean phase time
+        minPhase = min(theta[0]*theta[1],theta[2]*theta[3])
+        if theta[4] > minPhase/2 - boundary[4]: theta[4] = minPhase/2 - boundary[4]
+
     return theta
 
 def evaluate_AIC_gradient(k, theta_plus, theta_minus, deterministic_mode, number_params, file_name):
+    #Form the simulator commands for current thetas and deterministic modes
     command_list = []
     base_command = executable
     
@@ -426,27 +455,29 @@ def evaluate_AIC_gradient(k, theta_plus, theta_minus, deterministic_mode, number
     rss_plus = np.zeros(len(induction_times)+3)
     rss_minus = np.zeros(len(induction_times)+3)
     
+    #clear the plots on the interactive figure
     for i in range(0, len(plot_list)):
         plt.sca(plot_list[i])
         plt.cla()
     
+    #calculate RSS for each induction timepoint
     for i in range(0,len(induction_times)):
-        counts_plus = np.loadtxt("/home/main/git/chaste/projects/ISP/testoutput/" + directory_name + "/" + file_name + str(induction_times[i]) + "Plus", skiprows=1, usecols=3)
-        counts_minus = np.loadtxt("/home/main/git/chaste/projects/ISP/testoutput/" + directory_name + "/" + file_name + str(induction_times[i]) + "Minus", skiprows=1, usecols=3)
+        counts_plus = np.loadtxt("/home/main/git/chaste/projects/ISP/python_fixtures/testoutput/" + directory_name + "/" + file_name + str(induction_times[i]) + "Plus", skiprows=1, usecols=3)
+        counts_minus = np.loadtxt("/home/main/git/chaste/projects/ISP/python_fixtures/testoutput/" + directory_name + "/" + file_name + str(induction_times[i]) + "Minus", skiprows=1, usecols=3)
         prob_histo_plus, bin_edges = np.histogram(counts_plus, bins=1000, range=(1,1001),density=True)
         prob_histo_minus, bin_edges = np.histogram(counts_minus, bins=1000, range=(1,1001),density=True)
         
-        residual_plus = prob_histo_plus - empirical_prob_list[i]
-        residual_minus = prob_histo_minus - empirical_prob_list[i]
+        residual_plus = prob_histo_plus - count_prob_list[i]
+        residual_minus = prob_histo_minus - count_prob_list[i]
         
         rss_plus[i] = np.sum(np.square(residual_plus))
         rss_minus[i] = np.sum(np.square(residual_minus))
         
-        plotter(plot_list[i], counts_plus, counts_minus, empirical_prob_list[i],lineages_sampled_list[i], 0)
+        plotter(plot_list[i], counts_plus, counts_minus, count_prob_list[i],lineages_sampled_list[i], 0)
 
         
-    rates_plus = np.loadtxt("/home/main/git/chaste/projects/ISP/testoutput/" + directory_name + "/" + file_name + "RatePlus", skiprows=1, usecols=(0,3))
-    rates_minus = np.loadtxt("/home/main/git/chaste/projects/ISP/testoutput/" + directory_name + "/" + file_name + "RateMinus", skiprows=1, usecols=(0,3))
+    rates_plus = np.loadtxt("/home/main/git/chaste/projects/ISP/python_fixtures/testoutput/" + directory_name + "/" + file_name + "RatePlus", skiprows=1, usecols=(0,3))
+    rates_minus = np.loadtxt("/home/main/git/chaste/projects/ISP/python_fixtures/testoutput/" + directory_name + "/" + file_name + "RateMinus", skiprows=1, usecols=(0,3))
     
     for i in range (0,3):
         mode_rate_plus = np.array(rates_plus[np.where(rates_plus[:,1]==i)])
@@ -455,22 +486,29 @@ def evaluate_AIC_gradient(k, theta_plus, theta_minus, deterministic_mode, number
         histo_rate_plus, bin_edges = np.histogram(mode_rate_plus[:,0], rate_bin_sequence, density=False)
         histo_rate_minus, bin_edges = np.histogram(mode_rate_minus[:,0], rate_bin_sequence, density=False)
         
-        prob_histo_rate_plus = histo_rate_plus / ((rate_end_seed + 1)*5)
-        prob_histo_rate_minus = histo_rate_minus / ((rate_end_seed + 1)*5)
-
-        residual_plus = prob_histo_rate_plus - events_list[i]
-        residual_minus = prob_histo_rate_minus - events_list[i]
+        #hourly per-lineage probabilities
+        prob_histo_rate_plus = np.array(histo_rate_plus / ((rate_end_seed + 1)*5))
+        prob_histo_rate_minus = np.array(histo_rate_plus / ((rate_end_seed + 1)*5))
         
-        rss_plus[i+3] = np.sum(np.square(residual_plus))
-        rss_minus[i+3] = np.sum(np.square(residual_minus))
+        residual_plus = prob_histo_rate_plus - event_prob_list[i]
+        residual_minus = prob_histo_rate_minus - event_prob_list[i]
         
-        plotter(plot_list[i+3], mode_rate_plus[:,0], mode_rate_minus[:,0], events_list[i],lineages_sampled_events, 1)
+        #PD RESIUDAL WEIGHTING
+        if i == 1:
+            rss_plus[i+3] = np.sum(1.5*np.square(residual_plus))
+            rss_minus[i+3] = np.sum(1.5*np.square(residual_minus))
+        
+        else:
+            rss_plus[i+3] = np.sum(np.square(residual_plus))
+            rss_minus[i+3] = np.sum(np.square(residual_minus))
+        
+        plotter(plot_list[i+3], mode_rate_plus[:,0], mode_rate_minus[:,0], event_prob_list[i],lineages_sampled_events, 1)
 
     AIC_plus = 2 * number_params + number_comparisons * np.log(np.sum(rss_plus))
     AIC_minus = 2 * number_params + number_comparisons * np.log(np.sum(rss_minus))
     
-    
     plt.show()
+    plt.savefig("/home/main/git/chaste/projects/ISP/python_fixtures/testoutput/" +directory_name +"/" + "SDmode" + str(deterministic_mode) + "iterate" + str(k) + ".png")
     
     log.write("theta_plus:\n")
     if deterministic_mode == 0: log.write(str(k) + "\t" + str(theta_plus[0]) + "\t" + str(theta_plus[1]) + "\t" + str(theta_plus[2]) + "\t" + str(theta_plus[3]) + "\t" + str(theta_plus[4]) + "\n")
@@ -487,22 +525,27 @@ def evaluate_AIC_gradient(k, theta_plus, theta_minus, deterministic_mode, number
 
 #data plotter function for monitoring SPSA results
 def plotter(subplot,plus,minus,empirical_prob,samples,mode):
+    global plt0,plt1,plt2,plt3,plt4,plt5, prob_histo_plus, prob_histo_minus
     bin_sequence = []
     x_sequence = []
     trim_value = 0
-            
+    
     if mode == 0:
         bin_sequence = count_bin_sequence
         x_sequence = count_x_sequence
         trim_value = count_trim_value
+        prob_histo_plus, bin_edges = np.histogram(plus, bin_sequence, density=True)
+        prob_histo_minus, bin_edges = np.histogram(minus, bin_sequence, density=True)
     
     if mode == 1:
         bin_sequence = rate_bin_sequence
         x_sequence = rate_x_sequence
         trim_value = rate_trim_value
+        histo_plus, bin_edges = np.histogram(plus, bin_sequence, density=False)
+        histo_minus, bin_edges = np.histogram(minus, bin_sequence, density=False)
+        prob_histo_plus = np.array(histo_plus / ((rate_end_seed + 1)*5))
+        prob_histo_minus = np.array(histo_plus / ((rate_end_seed + 1)*5))
     
-    prob_histo_plus, bin_edges = np.histogram(plus, bin_sequence, density=True)
-    prob_histo_minus, bin_edges = np.histogram(minus, bin_sequence, density=True)
     trimmed_prob = empirical_prob[0:trim_value]
     
     subplot.plot(x_sequence,trimmed_prob, 'k+')
@@ -521,7 +564,14 @@ def plotter(subplot,plus,minus,empirical_prob,samples,mode):
     plt.pause(0.0001)
     subplot.fill_between(x_sequence, (prob_histo_minus - interval_minus), (prob_histo_minus + interval_minus), alpha=0.2, edgecolor='#800080', facecolor='#FF00FF')
     plt.pause(0.0001)
-
+    
+    if subplot==plt0: plt0.set_ylim((0,.20))
+    if subplot==plt1: plt1.set_ylim(0,.20)
+    if subplot==plt2: plt2.set_ylim(0,.7)
+    if subplot==plt3: plt3.set_ylim(0, .30)
+    if subplot==plt4: plt4.set_ylim(0, .15)
+    if subplot==plt5: plt5.set_ylim(0, .35)
+    
 def sampler(data,samples,bin_sequence):
     
     if len(data) == 0: #catches edge case w/ no entries for a mitotic mode

@@ -36,6 +36,8 @@ end_seed = 9999
 #GLOBAL MODEL PARAMETERS
 ##########################
 
+number_traversal_lineages = 60
+
 ############################
 # SPECIFIC MODEL PARAMETERS 
 ############################
@@ -157,10 +159,11 @@ def traverse_lineages(filename):
     #load lineage tracing data
     e_data = np.loadtxt(filename, skiprows = 1, usecols = (0,1,2,3))
 
+    p_RNG = np.random.RandomState(1)
+
     for curr_seed in range (start_seed,end_seed+1):
         k=0
-        np.random.seed(curr_seed)
-        random_lineage_number = np.random.randint(1,60)
+        random_lineage_number = p_RNG.randint(1,number_traversal_lineages)
         lineage_events = np.array(e_data[np.where(e_data[:,0]==random_lineage_number)])
         
         #find mitotic mode of first event and write to log
@@ -170,7 +173,7 @@ def traverse_lineages(filename):
         
         while mitotic_mode != 2:
             child_events = lineage_events[np.where(lineage_events[:,2]==current_event)]
-            random_child_row = np.random.randint(0,np.ma.size(child_events,0))
+            random_child_row = p_RNG.randint(0,np.ma.size(child_events,0))
             current_event= child_events[random_child_row,1]
             mitotic_mode = child_events[random_child_row,3]
             mode_sequences[k] += str(mitotic_mode)

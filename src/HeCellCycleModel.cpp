@@ -96,9 +96,13 @@ void HeCellCycleModel::ResetForDivision()
         if (mDeterministic)
         {
             mMitoticMode = 1; //0=PP;1=PD;2=DD
-            if (mpCell->HasCellProperty<Ath5Mo>()) //Ath5 morphants undergo PP rather than PD divisions
+            if (mpCell->HasCellProperty<Ath5Mo>()) //Ath5 morphants undergo PP rather than PD divisions in 80% of cases
             {
-                mMitoticMode = 0;
+                double ath5RV = p_random_number_generator->ranf();
+                if (ath5RV <= .8)
+                {
+                    mMitoticMode = 0;
+                }
             }
         }
     }
@@ -132,9 +136,13 @@ void HeCellCycleModel::ResetForDivision()
                         <= modeProbabilityMatrix[currentPhase - 1][0] + modeProbabilityMatrix[currentPhase - 1][1])
         {
             mMitoticMode = 1;
-            if (mpCell->HasCellProperty<Ath5Mo>()) //Ath5 morphants undergo PP rather than PD divisions
+            if (mpCell->HasCellProperty<Ath5Mo>()) //Ath5 morphants undergo PP rather than PD divisions in 80% of cases
             {
-                mMitoticMode = 0;
+                double ath5RV = p_random_number_generator->ranf();
+                if (ath5RV <= .8)
+                {
+                    mMitoticMode = 0;
+                }
             }
         }
         //if the RV is > currentPhasePP + currentPhasePD, change mMitoticMode from PP to DD
@@ -242,17 +250,11 @@ void HeCellCycleModel::InitialiseDaughterCell()
      * PD-type division & shifted sister cycle length & boundary adjustments
      **********/
 
-    if (mMitoticMode == 1)
+    if (mMitoticMode == 1) //RPC becomes specified retinal neuron in asymmetric PD mitosis
     {
-        if (mpCell->HasCellProperty<Ath5Mo>()) //Ath5 morphants undergo PP rather than PD divisions
-        {
-            mMitoticMode = 0;
-        }
-        else
-        {
-            mpCell->SetCellProliferativeType(mp_PostMitoticType);
-            mCellCycleDuration = DBL_MAX;
-        }
+        mpCell->SetCellProliferativeType(mp_PostMitoticType);
+        mCellCycleDuration = DBL_MAX;
+
     }
 
     //daughter cell's mCellCycleDuration is copied from parent; modified by a normally distributed shift if it remains proliferative

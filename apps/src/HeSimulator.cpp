@@ -133,9 +133,9 @@ int main(int argc, char *argv[])
                 "Bad earliestLineageStartTime (argument 11). Must be <endTime(arg13), <latestLineageStarTime (arg12)");
         sane = 0;
     }
-    if (latestLineageStartTime >= endTime)
+    if (latestLineageStartTime > endTime)
     {
-        ExecutableSupport::PrintError("Bad latestLineageStartTime (argument 12). Must be <endTime(arg13)");
+        ExecutableSupport::PrintError("Bad latestLineageStartTime (argument 12). Must be <=endTime(arg13)");
         sane = 0;
     }
 
@@ -296,12 +296,12 @@ int main(int argc, char *argv[])
             }
 
         }
-        else if (fixture == 1) //Wan 2016-type fixture - random TiL distribution
+        else if (fixture == 1) //Wan 2016-type fixture - each lineage founder selected randomly across residency time, simulator allowed to run until end of residency time
+            //passing residency time as latestLineageStartTime and endTime separately allows for creation of "shadow CMZ" population, probably what Wan actually did
         {
             //generate random lineage start time from even random distro across CMZ residency time
-            currTiL = p_RNG->ranf() * endTime;
-            //SimEndTime is a timeout
-            currSimEndTime = 240;
+            currTiL = p_RNG->ranf() * latestLineageStartTime;
+            currSimEndTime = endTime-currTiL;
             if (outputMode == 1) p_cycle_model->EnableModeEventOutput(0, seed);
         }
         else if (fixture == 2) //validation fixture- all founders have TiL given by induction time
