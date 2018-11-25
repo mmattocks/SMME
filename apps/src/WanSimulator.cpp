@@ -24,7 +24,7 @@
 #include "NodeBasedCellPopulation.hpp"
 #include "VertexBasedCellPopulation.hpp"
 
-#include "ColumnDataWriter.hpp"
+#include "CellProliferativeTypesCountWriter.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -32,10 +32,10 @@ int main(int argc, char *argv[])
     //main() returns code indicating sim run success or failure mode
     int exit_code = ExecutableSupport::EXIT_OK;
 
-    if (argc != 32)
+    if (argc != 23)
     {
         ExecutableSupport::PrintError(
-                "Wrong arguments for simulator.\nUsage (replace<> with values, pass bools as 0 or 1):\nStochastic Mode:\nHeSimulator <directoryString> <filenameString> <outputModeUnsigned(0=counts,1=events,2=sequence)> <deterministicBool=0> <fixtureUnsigned(0=He;1=Wan;2=test)> <founderAth5Mutant?Bool> <debugOutputBool> <startSeedUnsigned> <endSeedUnsigned>  <inductionTimeDoubleHours> <earliestLineageStartDoubleHours> <latestLineageStartDoubleHours> <endTimeDoubleHours> <mMitoticModePhase2Double> <mMitoticModePhase3Double> <pPP1Double(0-1)> <pPD1Double(0-1)> <pPP1Double(0-1)> <pPD1Double(0-1)> <pPP1Double(0-1)> <pPD1Double(0-1)>\nDeterministic Mode:\nHeSimulator <directoryString> <filenameString> <outputModeUnsigned(0=counts,1=events,2=sequence)> <deterministicBool=1> <fixtureUnsigned(0=He;1=Wan;2=test)> <founderAth5Mutant?Bool> <debugOutputBool> <startSeedUnsigned> <endSeedUnsigned>  <inductionTimeDoubleHours> <earliestLineageStartDoubleHours> <latestLineageStartDoubleHours> <endTimeDoubleHours> <phase1ShapeDouble(>0)> <phase1ScaleDouble(>0)> <phase2ShapeDouble(>0)> <phase2ScaleDouble(>0)> <phaseBoundarySisterShiftWidthDouble>\n",
+                "Wrong arguments for simulator.\nUsage (replace<> with values, pass bools as 0 or 1):\n WanSimulator <directoryString> <startSeedUnsigned> <endSeedUnsigned> <cmzResidencyTimeDoubleHours> <stemDivisorDouble> <meanProgenitorPopualtion@3dpfDouble> <stdProgenitorPopulation@3dpfDouble> <stemGammaShiftDouble> <stemGammaShapeDouble> <stemGammaScaleDouble> <progenitorGammaShiftDouble> <progenitorGammaShapeDouble> <progenitorGammaScaleDouble> <progenitorSisterShiftDouble> <mMitoticModePhase2Double> <mMitoticModePhase3Double> <pPP1Double(0-1)> <pPD1Double(0-1)> <pPP1Double(0-1)> <pPD1Double(0-1)> <pPP1Double(0-1)> <pPD1Double(0-1)>",
                 true);
         exit_code = ExecutableSupport::EXIT_BAD_ARGUMENTS;
         return exit_code;
@@ -44,57 +44,44 @@ int main(int argc, char *argv[])
     /***********************
      * SIMULATOR PARAMETERS
      ***********************/
-    std::string directoryString, filenameString;
-    bool debugOutput;
+    std::string directoryString;
     unsigned startSeed, endSeed;
-    double endTime, cmzResidencyTime;
-    double stemMean, stemStd, progenitorMean, progenitorStd;
-    double stemRatePeak, stemIncreasingSlope, stemDecreasingSlope, progenitorRatePeak, progenitorIncreasingSlope,
-            progenitorDecreasingSlope;
+    double cmzResidencyTime;
+    double stemDivisor, progenitorMean, progenitorStd;
     double stemGammaShift, stemGammaShape, stemGammaScale, progenitorGammaShift, progenitorGammaShape,
             progenitorGammaScale, progenitorGammaSister;
     double mitoticModePhase2, mitoticModePhase3, pPP1, pPD1, pPP2, pPD2, pPP3, pPD3; //stochastic He model parameters
 
     //PARSE ARGUMENTS
     directoryString = argv[1];
-    filenameString = argv[2];
-    debugOutput = std::stoul(argv[3]);
-    startSeed = std::stoul(argv[4]);
-    endSeed = std::stoul(argv[5]);
-    endTime = std::stod(argv[6]);
-    cmzResidencyTime = std::stod(argv[7]);
+    startSeed = std::stoul(argv[2]);
+    endSeed = std::stoul(argv[3]);
+    cmzResidencyTime = std::stod(argv[4]);
     //starting cell number distributions
-    stemMean = std::stod(argv[8]);
-    stemStd = std::stod(argv[9]);
-    progenitorMean = std::stod(argv[10]);
-    progenitorStd = std::stod(argv[11]);
-    //adjustable cycle duration params
-    stemRatePeak = std::stod(argv[12]);
-    stemIncreasingSlope = std::stod(argv[13]);
-    stemDecreasingSlope = std::stod(argv[14]);
-    progenitorRatePeak = std::stod(argv[15]);
-    progenitorIncreasingSlope = std::stod(argv[16]);
-    progenitorDecreasingSlope = std::stod(argv[17]);
+    stemDivisor = std::stod(argv[5]);
+    progenitorMean = std::stod(argv[6]);
+    progenitorStd = std::stod(argv[7]);
     //cycle duration params
-    stemGammaShift = std::stod(argv[18]);
-    stemGammaShape = std::stod(argv[19]);
-    stemGammaScale = std::stod(argv[20]);
-    progenitorGammaShift = std::stod(argv[21]);
-    progenitorGammaShape = std::stod(argv[22]);
-    progenitorGammaScale = std::stod(argv[23]);
-    progenitorGammaSister = std::stod(argv[24]);
+    stemGammaShift = std::stod(argv[8]);
+    stemGammaShape = std::stod(argv[9]);
+    stemGammaScale = std::stod(argv[10]);
+    progenitorGammaShift = std::stod(argv[11]);
+    progenitorGammaShape = std::stod(argv[12]);
+    progenitorGammaScale = std::stod(argv[13]);
+    progenitorGammaSister = std::stod(argv[14]);
     //He model params
-    mitoticModePhase2 = std::stod(argv[25]);
-    mitoticModePhase3 = std::stod(argv[26]);
-    pPP1 = std::stod(argv[27]);
-    pPD1 = std::stod(argv[28]);
-    pPP2 = std::stod(argv[29]);
-    pPD2 = std::stod(argv[30]);
-    pPP3 = std::stod(argv[31]);
-    pPD3 = std::stod(argv[32]);
+    mitoticModePhase2 = std::stod(argv[15]);
+    mitoticModePhase3 = std::stod(argv[16]);
+    pPP1 = std::stod(argv[17]);
+    pPD1 = std::stod(argv[18]);
+    pPP2 = std::stod(argv[19]);
+    pPD2 = std::stod(argv[20]);
+    pPP3 = std::stod(argv[21]);
+    pPD3 = std::stod(argv[22]);
 
-    std::vector<double> stemOffspringParams = { mitoticModePhase2, mitoticModePhase2+mitoticModePhase3, pPP1, pPD1, pPP2, pPD2, pPP3, pPD3, progenitorGammaShift, progenitorGammaShape, progenitorGammaScale, progenitorGammaSister};
-
+    std::vector<double> stemOffspringParams = { mitoticModePhase2, mitoticModePhase2 + mitoticModePhase3, pPP1, pPD1,
+                                                pPP2, pPD2, pPP3, pPD3, progenitorGammaShift, progenitorGammaShape,
+                                                progenitorGammaScale, progenitorGammaSister };
 
     /************************
      * PARAMETER/ARGUMENT SANITY CHECK
@@ -103,7 +90,39 @@ int main(int argc, char *argv[])
 
     if (endSeed < startSeed)
     {
-        ExecutableSupport::PrintError("Bad start & end seeds (arguments, 8, 9). endSeed must not be < startSeed");
+        ExecutableSupport::PrintError("Bad start & end seeds (arguments, 3, 4). endSeed must not be < startSeed");
+        sane = 0;
+    }
+
+    if (cmzResidencyTime <= 0)
+    {
+        ExecutableSupport::PrintError("Bad CMZ residency time (argument 5). cmzResidencyTime must be positive-valued");
+        sane = 0;
+    }
+
+    if (stemDivisor <= 0)
+    {
+        ExecutableSupport::PrintError("Bad stemDivisor (argument 6). stemDivisor must be positive-valued");
+        sane = 0;
+    }
+
+    if (progenitorMean <= 0 || progenitorStd <= 0)
+    {
+        ExecutableSupport::PrintError("Bad progenitorMean or progenitorStd (arguments 7,8). Must be positive-valued");
+        sane = 0;
+    }
+
+    if (stemGammaShift < 0 || stemGammaShape <= 0 || stemGammaScale <= 0)
+    {
+        ExecutableSupport::PrintError(
+                "Bad stemGammaShift, stemGammaShape, or stemGammaScale (arguments 9, 10, 11). Shifts must be >=0, cycle shape and scale params must be positive-valued");
+        sane = 0;
+    }
+
+    if (progenitorGammaShift < 0 || progenitorGammaShape <= 0 || progenitorGammaScale <= 0 || progenitorGammaSister < 0)
+    {
+        ExecutableSupport::PrintError(
+                "Bad progenitorGammaShift, progenitorGammaShape, progenitorGammaScale, or progenitorGammaSisterShift (arguments 12,13,14,15). Shifts must be >=0, cycle shape and scale params must be positive-valued");
         sane = 0;
     }
 
@@ -136,147 +155,106 @@ int main(int argc, char *argv[])
         sane = 0;
     }
 
-if (sane == 0)
-{
-    ExecutableSupport::PrintError("Exiting with bad arguments. See errors for details");
-    exit_code = ExecutableSupport::EXIT_BAD_ARGUMENTS;
-    return exit_code;
+    if (sane == 0)
+    {
+        ExecutableSupport::PrintError("Exiting with bad arguments. See errors for details");
+        exit_code = ExecutableSupport::EXIT_BAD_ARGUMENTS;
+        return exit_code;
+    }
 
-}
+    /************************
+     * SIMULATOR SETUP & RUN
+     ************************/
 
-/************************
- * SIMULATOR OUTPUT SETUP
- ************************/
-
-//Set up singleton LogFile
-LogFile* p_log = LogFile::Instance();
-p_log->Set(0, directoryString, filenameString);
-
-ExecutableSupport::Print("Simulator writing file " + filenameString + " to directory " + directoryString);
-
-//Log entry counter
-unsigned entry_number = 1;
-
-//Write appropriate header to log
-*p_log << "Entry\tSeed\tTotalCells\tStemCount\tProgenitorCount\tPostMitoticCount\n";
+    ExecutableSupport::Print("Simulator writing files to directory " + directoryString);
 
 //Instance RNG
-RandomNumberGenerator* p_RNG = RandomNumberGenerator::Instance();
+    RandomNumberGenerator* p_RNG = RandomNumberGenerator::Instance();
 
 //Initialise pointers to relevant singleton ProliferativeTypes and Properties
-MAKE_PTR(WildTypeCellMutationState, p_state);
-MAKE_PTR(StemCellProliferativeType, p_Stem);
-MAKE_PTR(TransitCellProliferativeType, p_Transit);
-MAKE_PTR(DifferentiatedCellProliferativeType, p_PostMitotic);
-MAKE_PTR(Ath5Mo, p_Morpholino);
-MAKE_PTR(CellLabel, p_label);
-
-/************************
- * SIMULATOR SETUP & RUN
- ************************/
+    boost::shared_ptr<AbstractCellProperty> p_state(CellPropertyRegistry::Instance()->Get<WildTypeCellMutationState>());
+    boost::shared_ptr<AbstractCellProperty> p_Stem(CellPropertyRegistry::Instance()->Get<StemCellProliferativeType>());
+    boost::shared_ptr<AbstractCellProperty> p_Transit(
+            CellPropertyRegistry::Instance()->Get<TransitCellProliferativeType>());
+    boost::shared_ptr<AbstractCellProperty> p_PostMitotic(
+            CellPropertyRegistry::Instance()->Get<DifferentiatedCellProliferativeType>());
 
 //iterate through supplied seed range, executing one simulation per seed
-for (unsigned seed = startSeed; seed <= endSeed; seed++)
-{
-    //initialise pointer to debugWriter
-    boost::shared_ptr<ColumnDataWriter> p_debugWriter(
-            new ColumnDataWriter(directoryString, filenameString + "DEBUG_" + std::to_string(seed), false, 10));
-
-    //initialise SimulationTime (permits cellcyclemodel setup)
-    SimulationTime::Instance()->SetStartTime(0.0);
-
-    //Reseed the RNG with the required seed
-    p_RNG->Reseed(seed);
-
-    unsigned numberStem = int(std::round(p_RNG->NormalRandomDeviate(stemMean, stemStd)));
-    unsigned numberProgenitors = int(std::round(p_RNG->NormalRandomDeviate(progenitorMean, progenitorStd)));
-
-    std::vector<CellPtr> cells;
-
-    for(unsigned i=0;i<numberStem;i++)
+    for (unsigned seed = startSeed; seed <= endSeed; seed++)
     {
-        WanStemCellCycleModel* p_stem_model = new WanStemCellCycleModel;
+        //initialise SimulationTime (permits cellcyclemodel setup)
+        SimulationTime::Instance()->SetStartTime(0.0);
 
-        if (debugOutput)
+        //Reseed the RNG with the required seed
+        p_RNG->Reseed(seed);
+
+        //unsigned numberStem = int(std::round(p_RNG->NormalRandomDeviate(stemMean, stemStd)));
+        unsigned numberProgenitors = int(std::round(p_RNG->NormalRandomDeviate(progenitorMean, progenitorStd)));
+        unsigned numberStem = int(std::round(numberProgenitors / stemDivisor));
+
+        std::vector<CellPtr> stems;
+        std::vector<CellPtr> cells;
+
+        for (unsigned i = 0; i < numberStem; i++)
         {
-            p_stem_model->EnableModelDebugOutput(p_debugWriter);
+            WanStemCellCycleModel* p_stem_model = new WanStemCellCycleModel;
+            p_stem_model->SetDimension(2);
+            p_stem_model->SetModelParameters(stemGammaShift, stemGammaShape, stemGammaScale, stemOffspringParams);
+
+            CellPtr p_cell(new Cell(p_state, p_stem_model));
+            p_cell->InitialiseCellCycleModel();
+            stems.push_back(p_cell);
+            cells.push_back(p_cell);
         }
 
-        p_stem_model->SetDimension(2);
-        p_stem_model->SetTransitType(p_Transit);
-        p_stem_model->SetModelParameters(stemGammaShift, stemGammaShape, stemGammaScale, stemOffspringParams);
-        p_stem_model->SetTimeDependentCycleDuration(stemRatePeak, stemIncreasingSlope, stemDecreasingSlope);
-
-        CellPtr p_cell(new Cell(p_state, p_stem_model));
-        p_cell->SetCellProliferativeType(p_Stem);
-        p_cell->InitialiseCellCycleModel();
-        cells.push_back(p_cell);
-    }
-
-    for(unsigned i=0;i<numberProgenitors;i++)
-    {
-        HeCellCycleModel* p_prog_model = new HeCellCycleModel;
-
-        if (debugOutput)
+        for (unsigned i = 0; i < numberProgenitors; i++)
         {
-            p_prog_model->EnableModelDebugOutput(p_debugWriter);
+            double currTiL = p_RNG->ranf() * cmzResidencyTime;
+
+            HeCellCycleModel* p_prog_model = new HeCellCycleModel;
+            p_prog_model->SetDimension(2);
+            p_prog_model->SetModelParameters(currTiL, mitoticModePhase2, mitoticModePhase2 + mitoticModePhase3, pPP1,
+                                             pPD1, pPP2, pPD2, pPP3, pPD3);
+            p_prog_model->EnableKillSpecified();
+
+            CellPtr p_cell(new Cell(p_state, p_prog_model));
+            p_cell->InitialiseCellCycleModel();
+            cells.push_back(p_cell);
         }
 
-        double currTiL = p_RNG->ranf() * cmzResidencyTime;
+        //Generate 1x#cells mesh for abstract colony
+        HoneycombMeshGenerator generator(1, (numberProgenitors + numberStem));
+        MutableMesh<2, 2>* p_generating_mesh = generator.GetMesh();
+        NodesOnlyMesh<2> mesh;
+        mesh.ConstructNodesWithoutMesh(*p_generating_mesh, 1.5);
 
-        p_prog_model->SetDimension(2);
-        p_prog_model->SetPostMitoticType(p_PostMitotic);
-        p_prog_model->SetModelParameters(currTiL, mitoticModePhase2, mitoticModePhase2 + mitoticModePhase3, pPP1,
-                pPD1, pPP2, pPD2, pPP3, pPD3);
-        p_prog_model->SetTimeDependentCycleDuration(progenitorRatePeak, progenitorIncreasingSlope, progenitorDecreasingSlope);
+        //Setup cell population
+        boost::shared_ptr<NodeBasedCellPopulation<2>> cell_population(new NodeBasedCellPopulation<2>(mesh, cells));
+        cell_population->AddCellPopulationCountWriter<CellProliferativeTypesCountWriter>();
 
-        CellPtr p_cell(new Cell(p_state, p_prog_model));
-        p_cell->SetCellProliferativeType(p_Transit);
-        p_cell->InitialiseCellCycleModel();
-        cells.push_back(p_cell);
+        //Give Wan stem cells the population & base stem pop size
+        for (auto p_cell : stems)
+        {
+            WanStemCellCycleModel* p_cycle_model = dynamic_cast<WanStemCellCycleModel*>(p_cell->GetCellCycleModel());
+            p_cycle_model->EnableExpandingStemPopulation(numberStem, cell_population);
+        }
+
+        //Setup simulator & run simulation
+        boost::shared_ptr<OffLatticeSimulationPropertyStop<2>> p_simulator(
+                new OffLatticeSimulationPropertyStop<2>(*cell_population));
+        p_simulator->SetStopProperty(p_Transit); //simulation to stop if no RPCs are left
+        p_simulator->SetDt(1);
+        p_simulator->SetOutputDirectory(directoryString + "/Seed" + std::to_string(seed) + "Results");
+        p_simulator->SetEndTime(8568); // 360dpf - 3dpf simulation start time
+        p_simulator->Solve();
+
+        //Reset for next simulation
+        SimulationTime::Destroy();
+        cell_population.reset();
     }
 
-    //Generate 1x1 mesh for abstract colony
-    HoneycombMeshGenerator generator(1, 1);
-    MutableMesh<2, 2>* p_generating_mesh = generator.GetMesh();
-    NodesOnlyMesh<2> mesh;
-    mesh.ConstructNodesWithoutMesh(*p_generating_mesh, 1.5);
+    p_RNG->Destroy();
 
-    //Setup cell population
-    NodeBasedCellPopulation<2>* cell_population(new NodeBasedCellPopulation<2>(mesh, cells));
-
-    //Setup simulator & run simulation
-    boost::shared_ptr<OffLatticeSimulationPropertyStop<2>> p_simulator(
-            new OffLatticeSimulationPropertyStop<2>(*cell_population));
-    p_simulator->SetStopProperty(p_Transit);//simulation to stop if no RPCs are left
-    p_simulator->SetDt(0.05);
-    p_simulator->SetEndTime(endTime);
-    p_simulator->SetOutputDirectory("UnusedSimOutput" + filenameString);//unused output
-    p_simulator->Solve();
-
-    //Count population size and composition
-    unsigned count = cell_population->GetNumRealCells();
-    unsigned stem = p_Stem->GetCellCount();
-    unsigned progenitor = p_Transit->GetCellCount();
-    unsigned postmitotic = p_PostMitotic->GetCellCount();
-
-    *p_log << entry_number << "\t" << seed << "\t" << count << "\t" << stem << "\t" << progenitor << "\t" << postmitotic << "\n";
-
-    //Reset for next simulation
-    SimulationTime::Destroy();
-    delete cell_population;
-    entry_number++;
-
-    if (debugOutput)
-    {
-        p_debugWriter->Close();
-    }
-
-}
-
-p_RNG->Destroy();
-LogFile::Close();
-
-return exit_code;
+    return exit_code;
 }
 ;

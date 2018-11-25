@@ -5,6 +5,7 @@
 #include "RandomNumberGenerator.hpp"
 #include "Cell.hpp"
 #include "DifferentiatedCellProliferativeType.hpp"
+#include "GomesRetinalNeuralFates.hpp"
 #include "SmartPointers.hpp"
 #include "ColumnDataWriter.hpp"
 #include "LogFile.hpp"

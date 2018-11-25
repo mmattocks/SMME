@@ -1,18 +1,19 @@
 #include "GomesCellCycleModel.hpp"
+#include "GomesRetinalNeuralFates.hpp"
 
 GomesCellCycleModel::GomesCellCycleModel() :
         AbstractSimpleCellCycleModel(), mOutput(false), mEventStartTime(), mSequenceSampler(false), mSeqSamplerLabelSister(
-                false), mDebug(false), mTimeID(), mVarIDs(), mDebugWriter(), mNormalMu(3.9716), mNormalSigma(0.32839), mPP(.055), mPD(
-                0.221), mpBC(.128), mpAC(.106), mpMG(.028), mMitoticMode(), mSeed(), mp_PostMitoticType(), mp_RPh_Type(), mp_BC_Type(), mp_AC_Type(), mp_MG_Type(), mp_label_Type()
+                false), mDebug(false), mTimeID(), mVarIDs(), mDebugWriter(), mNormalMu(3.9716), mNormalSigma(0.32839), mPP(
+                .055), mPD(0.221), mpBC(.128), mpAC(.106), mpMG(.028), mMitoticMode(), mSeed(), mp_PostMitoticType(), mp_RPh_Type(), mp_BC_Type(), mp_AC_Type(), mp_MG_Type(), mp_label_Type()
 {
 }
 
 GomesCellCycleModel::GomesCellCycleModel(const GomesCellCycleModel& rModel) :
-        AbstractSimpleCellCycleModel(rModel), mOutput(rModel.mOutput), mEventStartTime(
-                rModel.mEventStartTime), mSequenceSampler(rModel.mSequenceSampler), mSeqSamplerLabelSister(
-                rModel.mSeqSamplerLabelSister), mDebug(rModel.mDebug), mTimeID(rModel.mTimeID), mVarIDs(rModel.mVarIDs), mDebugWriter(
-                rModel.mDebugWriter), mNormalMu(rModel.mNormalMu), mNormalSigma(rModel.mNormalSigma), mPP(rModel.mPP), mPD(
-                rModel.mPD), mpBC(rModel.mpBC), mpAC(rModel.mpAC), mpMG(rModel.mpMG), mMitoticMode(rModel.mMitoticMode), mSeed(
+        AbstractSimpleCellCycleModel(rModel), mOutput(rModel.mOutput), mEventStartTime(rModel.mEventStartTime), mSequenceSampler(
+                rModel.mSequenceSampler), mSeqSamplerLabelSister(rModel.mSeqSamplerLabelSister), mDebug(rModel.mDebug), mTimeID(
+                rModel.mTimeID), mVarIDs(rModel.mVarIDs), mDebugWriter(rModel.mDebugWriter), mNormalMu(
+                rModel.mNormalMu), mNormalSigma(rModel.mNormalSigma), mPP(rModel.mPP), mPD(rModel.mPD), mpBC(
+                rModel.mpBC), mpAC(rModel.mpAC), mpMG(rModel.mpMG), mMitoticMode(rModel.mMitoticMode), mSeed(
                 rModel.mSeed), mp_PostMitoticType(rModel.mp_PostMitoticType), mp_RPh_Type(rModel.mp_RPh_Type), mp_BC_Type(
                 rModel.mp_BC_Type), mp_AC_Type(rModel.mp_AC_Type), mp_MG_Type(rModel.mp_MG_Type), mp_label_Type(
                 rModel.mp_label_Type)
@@ -114,30 +115,39 @@ void GomesCellCycleModel::ResetForDivision()
     /******************
      * SEQUENCE SAMPLER
      ******************/
-
-    if (mpCell->HasCellProperty<CellLabel>())
+    //if the sequence sampler has been turned on, check for the label & write mitotic mode to log
+    //50% chance of each daughter cell from a mitosis inheriting the label
+    if (mSequenceSampler)
     {
-        (*LogFile::Instance()) << mMitoticMode;
-
-        double labelDie = p_random_number_generator->ranf();
-        if (labelDie <= .5)
+        if (mpCell->HasCellProperty<CellLabel>())
         {
-            mSeqSamplerLabelSister = true;
-            mpCell->RemoveCellProperty<CellLabel>();
+            (*LogFile::Instance()) << mMitoticMode;
+            double labelRV = p_random_number_generator->ranf();
+            if (labelRV <= .5)
+            {
+                mSeqSamplerLabelSister = true;
+                mpCell->RemoveCellProperty<CellLabel>();
+            }
+            else
+            {
+                mSeqSamplerLabelSister = false;
+            }
         }
         else
         {
+            //prevents lost-label cells from labelling their progeny
             mSeqSamplerLabelSister = false;
         }
     }
-
 }
 
 void GomesCellCycleModel::InitialiseDaughterCell()
 {
-
-    //daughter cell's mCellCycleDuration is copied from parent; reset to new value from gamma PDF here
-    SetCellCycleDuration();
+    if (mMitoticMode == 0)
+    {
+        //daughter cell's mCellCycleDuration is copied from parent; reset to new value from gamma PDF here
+        SetCellCycleDuration();
+    }
 
     /************
      * PD-type division
@@ -170,14 +180,50 @@ void GomesCellCycleModel::InitialiseDaughterCell()
         }
     }
 
+    if (mMitoticMode == 2)
+    {
+        RandomNumberGenerator* p_random_number_generator = RandomNumberGenerator::Instance();
+        //remove the fate assigned to the parent cell in ResetForDivision, then assign the sister fate as usual
+        mpCell->RemoveCellProperty<AbstractCellProperty>();
+        mpCell->SetCellProliferativeType(mp_PostMitoticType);
+
+        /*********************
+         * SPECIFICATION RULES
+         ********************/
+        double specificationRV = p_random_number_generator->ranf();
+        if (specificationRV <= mpMG)
+        {
+            mpCell->AddCellProperty(mp_MG_Type);
+        }
+        if (specificationRV > mpMG && specificationRV <= mpMG + mpAC)
+        {
+            mpCell->AddCellProperty(mp_AC_Type);
+        }
+        if (specificationRV > mpMG + mpAC && specificationRV <= mpMG + mpAC + mpBC)
+        {
+            mpCell->AddCellProperty(mp_BC_Type);
+        }
+        if (specificationRV > mpMG + mpAC + mpBC)
+        {
+            mpCell->AddCellProperty(mp_RPh_Type);
+        }
+    }
+
     /******************
      * SEQUENCE SAMPLER
      ******************/
-    if (!mSeqSamplerLabelSister)
+    if (mSequenceSampler)
     {
-        mpCell->RemoveCellProperty<CellLabel>();
+        if (mSeqSamplerLabelSister)
+        {
+            mpCell->AddCellProperty(mp_label_Type);
+            mSeqSamplerLabelSister = false;
+        }
+        else
+        {
+            mpCell->RemoveCellProperty<CellLabel>();
+        }
     }
-
 }
 
 void GomesCellCycleModel::SetModelParameters(const double normalMu, const double normalSigma, const double PP,

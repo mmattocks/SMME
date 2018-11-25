@@ -18,7 +18,7 @@ if not(os.path.isfile(executable)):
 # SPSA COEFFICIENTS
 #####################
 
-a_s = .019
+a_s = .025
 c_s = .1
 
 a_d = .0019

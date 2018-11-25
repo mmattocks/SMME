@@ -31,7 +31,6 @@ bool OffLatticeSimulationPropertyStop<ELEMENT_DIM,SPACE_DIM>::StoppingEventHasOc
 	}
 }
 
-
 //Public access to Stopping Event bool
 template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
 bool OffLatticeSimulationPropertyStop<ELEMENT_DIM,SPACE_DIM>::HasStoppingEventOccurred()

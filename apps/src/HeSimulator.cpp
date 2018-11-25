@@ -297,11 +297,12 @@ int main(int argc, char *argv[])
 
         }
         else if (fixture == 1) //Wan 2016-type fixture - each lineage founder selected randomly across residency time, simulator allowed to run until end of residency time
-            //passing residency time as latestLineageStartTime and endTime separately allows for creation of "shadow CMZ" population, probably what Wan actually did
+        //passing residency time (as latestLineageStartTime) and endTime separately allows for creation of "shadow CMZ" population
+        //this allows investigation of different assumptions about how Wan et al.'s model output was generated
         {
             //generate random lineage start time from even random distro across CMZ residency time
             currTiL = p_RNG->ranf() * latestLineageStartTime;
-            currSimEndTime = endTime-currTiL;
+            currSimEndTime = std::max(.05, endTime - currTiL); //minimum 1 timestep, prevents 0 timestep SimulationTime error
             if (outputMode == 1) p_cycle_model->EnableModeEventOutput(0, seed);
         }
         else if (fixture == 2) //validation fixture- all founders have TiL given by induction time
@@ -312,7 +313,7 @@ int main(int argc, char *argv[])
 
         //Setup lineages' cycle model with appropriate parameters
         p_cycle_model->SetDimension(2);
-        p_cycle_model->SetPostMitoticType(p_PostMitotic);
+        //p_cycle_model->SetPostMitoticType(p_PostMitotic);
 
         if (!deterministicMode)
         {
@@ -328,16 +329,14 @@ int main(int argc, char *argv[])
             p_cycle_model->SetDeterministicMode(currTiL, currPhase2Boundary, currPhase3Boundary, phaseSisterShiftWidth);
         }
 
-        if (outputMode == 2) p_cycle_model->EnableSequenceSampler(p_label);
+        if (outputMode == 2) p_cycle_model->EnableSequenceSampler();
 
         //Setup vector containing lineage founder with the properly set up cell cycle model
         std::vector<CellPtr> cells;
         CellPtr p_cell(new Cell(p_state, p_cycle_model));
         p_cell->SetCellProliferativeType(p_Mitotic);
-        if(ath5founder == 1)
-        {
-            p_cell->AddCellProperty(p_Morpholino);
-        }
+        if (ath5founder == 1) p_cell->AddCellProperty(p_Morpholino);
+        if (outputMode == 2) p_cell->AddCellProperty(p_label);
         p_cell->InitialiseCellCycleModel();
         cells.push_back(p_cell);
 

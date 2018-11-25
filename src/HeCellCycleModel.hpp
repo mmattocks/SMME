@@ -4,12 +4,12 @@
 #include "AbstractSimpleCellCycleModel.hpp"
 #include "RandomNumberGenerator.hpp"
 #include "Cell.hpp"
+#include "TransitCellProliferativeType.hpp"
 #include "DifferentiatedCellProliferativeType.hpp"
 #include "SmartPointers.hpp"
 #include "ColumnDataWriter.hpp"
 #include "LogFile.hpp"
 #include "CellLabel.hpp"
-
 #include "HeAth5Mo.hpp"
 
 /***********************************
@@ -67,6 +67,7 @@ private:
 
 protected:
     //mode/output variables
+    bool mKillSpecified;
     bool mDeterministic;
     bool mOutput;
     double mEventStartTime;
@@ -86,8 +87,6 @@ protected:
     double mMitoticModePhase2;
     double mMitoticModePhase3;
     double mPhaseShiftWidth;
-    double mLastPhase2;
-    double mLastPhase3;
     double mPhase1PP;
     double mPhase1PD;
     double mPhase2PP;
@@ -101,8 +100,6 @@ protected:
     double mIncreasingRateSlope;
     double mDecreasingRateSlope;
     double mBaseGammaScale;
-    boost::shared_ptr<AbstractCellProperty> mp_PostMitoticType;
-    boost::shared_ptr<AbstractCellProperty> mp_label_Type;
 
     /**
      * Protected copy-constructor for use by CreateCellCycleModel().
@@ -149,6 +146,8 @@ public:
     /**
      * Overridden Initialise() method
      * Used to give an appropriate mCellCycleDuration to cells w/ TiL offsets
+     * sets mReadytoDivide to false as appropriate
+     * Initialises as transit proliferative type
      **/
     void Initialise();
 
@@ -173,17 +172,20 @@ public:
                               double gammaScale = 1, double sisterShift = 1);
     void SetTimeDependentCycleDuration(double peakRateTime, double increasingSlope, double decreasingSlope);
 
-    //This should normally be a DifferentiatedCellProliferativeType
-    void SetPostMitoticType(boost::shared_ptr<AbstractCellProperty> p_PostMitoticType);
+    //Function to set mKillSpecified = true; marks specified neurons for death and removal from population
+    //Intended to help w/ resource consumption for WanSimulator
+    void EnableKillSpecified();
 
     //Functions to enable per-cell mitotic mode logging for mode rate & sequence sampling fixtures
     //Uses singleton logfile
     void EnableModeEventOutput(double eventStart, unsigned seed);
-    void EnableSequenceSampler(boost::shared_ptr<AbstractCellProperty> label);
+    void EnableSequenceSampler();
 
     //More detailed debug output. Needs a ColumnDataWriter passed to it
     //Only declare ColumnDataWriter directory, filename, etc; do not set up otherwise
+    //Use PassDebugWriter if the writer is already enabled elsewhere (ie. in a Wan stem cell cycle model)
     void EnableModelDebugOutput(boost::shared_ptr<ColumnDataWriter> debugWriter);
+    void PassDebugWriter(boost::shared_ptr<ColumnDataWriter> debugWriter, int timeID, std::vector<int> varIDs);
 
     //Not used, but must be overwritten lest HeCellCycleModels be abstract
     double GetAverageTransitCellCycleTime();

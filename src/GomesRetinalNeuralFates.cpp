@@ -1,4 +1,4 @@
-#include "../../../../projects/ISP/src/GomesRetinalNeuralFates.hpp"
+#include "GomesRetinalNeuralFates.hpp"
 
 RodPhotoreceptor::RodPhotoreceptor(unsigned colour)
     : AbstractCellProperty(),

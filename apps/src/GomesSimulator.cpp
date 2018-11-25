@@ -189,6 +189,7 @@ int main(int argc, char *argv[])
         p_cycle_model->SetModelParameters(normalMu, normalSigma, pPP, pPD, pBC, pAC, pMG);
         p_cycle_model->SetModelProperties(p_RPh_fate, p_AC_fate, p_BC_fate, p_MG_fate);
         if (outputMode == 2) p_cycle_model->EnableSequenceSampler(p_label);
+        if (outputMode == 2) p_cell->AddCellProperty(p_label);
         p_cell->InitialiseCellCycleModel();
         cells.push_back(p_cell);
 

@@ -1,31 +1,29 @@
 #include "HeCellCycleModel.hpp"
 
 HeCellCycleModel::HeCellCycleModel() :
-        AbstractSimpleCellCycleModel(), mDeterministic(false), mOutput(false), mEventStartTime(24.0), mSequenceSampler(
-                false), mSeqSamplerLabelSister(false), mDebug(false), mTimeID(), mVarIDs(), mDebugWriter(), mTiLOffset(
+        AbstractSimpleCellCycleModel(), mKillSpecified(false), mDeterministic(false), mOutput(false), mEventStartTime(
+                24.0), mSequenceSampler(false), mSeqSamplerLabelSister(false), mDebug(false), mTimeID(), mVarIDs(), mDebugWriter(), mTiLOffset(
                 0.0), mGammaShift(4.0), mGammaShape(2.0), mGammaScale(1.0), mSisterShiftWidth(1), mMitoticModePhase2(
-                8.0), mMitoticModePhase3(15.0), mPhaseShiftWidth(2.0), mLastPhase2(), mLastPhase3(), mPhase1PP(1.0), mPhase1PD(
-                0.0), mPhase2PP(0.2), mPhase2PD(0.4), mPhase3PP(0.2), mPhase3PD(0.0), mMitoticMode(0), mSeed(0), mTimeDependentCycleDuration(
-                false), mPeakRateTime(), mIncreasingRateSlope(), mDecreasingRateSlope(), mBaseGammaScale(), mp_PostMitoticType(), mp_label_Type()
+                8.0), mMitoticModePhase3(15.0), mPhaseShiftWidth(2.0), mPhase1PP(1.0), mPhase1PD(0.0), mPhase2PP(0.2), mPhase2PD(
+                0.4), mPhase3PP(0.2), mPhase3PD(0.0), mMitoticMode(0), mSeed(0), mTimeDependentCycleDuration(false), mPeakRateTime(), mIncreasingRateSlope(), mDecreasingRateSlope(), mBaseGammaScale()
 {
     mReadyToDivide = true; //He model begins with a first division
 }
 
 HeCellCycleModel::HeCellCycleModel(const HeCellCycleModel& rModel) :
-        AbstractSimpleCellCycleModel(rModel), mDeterministic(rModel.mDeterministic), mOutput(rModel.mOutput), mEventStartTime(
-                rModel.mEventStartTime), mSequenceSampler(rModel.mSequenceSampler), mSeqSamplerLabelSister(
-                rModel.mSeqSamplerLabelSister), mDebug(rModel.mDebug), mTimeID(rModel.mTimeID), mVarIDs(rModel.mVarIDs), mDebugWriter(
-                rModel.mDebugWriter), mTiLOffset(rModel.mTiLOffset), mGammaShift(rModel.mGammaShift), mGammaShape(
-                rModel.mGammaShape), mGammaScale(rModel.mGammaScale), mSisterShiftWidth(rModel.mSisterShiftWidth), mMitoticModePhase2(
+        AbstractSimpleCellCycleModel(rModel), mKillSpecified(rModel.mKillSpecified), mDeterministic(
+                rModel.mDeterministic), mOutput(rModel.mOutput), mEventStartTime(rModel.mEventStartTime), mSequenceSampler(
+                rModel.mSequenceSampler), mSeqSamplerLabelSister(rModel.mSeqSamplerLabelSister), mDebug(rModel.mDebug), mTimeID(
+                rModel.mTimeID), mVarIDs(rModel.mVarIDs), mDebugWriter(rModel.mDebugWriter), mTiLOffset(
+                rModel.mTiLOffset), mGammaShift(rModel.mGammaShift), mGammaShape(rModel.mGammaShape), mGammaScale(
+                rModel.mGammaScale), mSisterShiftWidth(rModel.mSisterShiftWidth), mMitoticModePhase2(
                 rModel.mMitoticModePhase2), mMitoticModePhase3(rModel.mMitoticModePhase3), mPhaseShiftWidth(
-                rModel.mPhaseShiftWidth), mLastPhase2(rModel.mLastPhase2), mLastPhase3(rModel.mLastPhase3), mPhase1PP(
-                rModel.mPhase1PP), mPhase1PD(rModel.mPhase1PD), mPhase2PP(rModel.mPhase2PP), mPhase2PD(
-                rModel.mPhase2PD), mPhase3PP(rModel.mPhase3PP), mPhase3PD(rModel.mPhase3PD), mMitoticMode(
-                rModel.mMitoticMode), mSeed(rModel.mSeed), mTimeDependentCycleDuration(
+                rModel.mPhaseShiftWidth), mPhase1PP(rModel.mPhase1PP), mPhase1PD(rModel.mPhase1PD), mPhase2PP(
+                rModel.mPhase2PP), mPhase2PD(rModel.mPhase2PD), mPhase3PP(rModel.mPhase3PP), mPhase3PD(
+                rModel.mPhase3PD), mMitoticMode(rModel.mMitoticMode), mSeed(rModel.mSeed), mTimeDependentCycleDuration(
                 rModel.mTimeDependentCycleDuration), mPeakRateTime(rModel.mPeakRateTime), mIncreasingRateSlope(
                 rModel.mIncreasingRateSlope), mDecreasingRateSlope(rModel.mDecreasingRateSlope), mBaseGammaScale(
-                rModel.mBaseGammaScale), mp_PostMitoticType(rModel.mp_PostMitoticType), mp_label_Type(
-                rModel.mp_label_Type)
+                rModel.mBaseGammaScale)
 {
 }
 
@@ -58,13 +56,16 @@ void HeCellCycleModel::SetCellCycleDuration()
         double currTime = SimulationTime::Instance()->GetTime();
         if (currTime <= mPeakRateTime)
         {
-            mGammaScale = mBaseGammaScale * currTime * mIncreasingRateSlope;
+            mGammaScale = std::max((mBaseGammaScale - currTime * mIncreasingRateSlope), .0000000000001);
         }
         if (currTime > mPeakRateTime)
         {
-            mGammaScale = (mBaseGammaScale * mPeakRateTime * mIncreasingRateSlope)
-                    + (mBaseGammaScale * (currTime - mPeakRateTime) * mDecreasingRateSlope);
+            mGammaScale = std::max(
+                    ((mBaseGammaScale - mPeakRateTime * mIncreasingRateSlope)
+                            + (mBaseGammaScale + (currTime - mPeakRateTime) * mDecreasingRateSlope)),
+                    .0000000000001);
         }
+        mCellCycleDuration = mGammaShift + p_random_number_generator->GammaRandomDeviate(mGammaShape, mGammaScale);
     }
 
 }
@@ -174,48 +175,60 @@ void HeCellCycleModel::ResetForDivision()
      * *************/
     if (mMitoticMode == 2)
     {
-        mpCell->SetCellProliferativeType(mp_PostMitoticType);
+        boost::shared_ptr<AbstractCellProperty> p_PostMitoticType =
+                mpCell->rGetCellPropertyCollection().GetCellPropertyRegistry()->Get<DifferentiatedCellProliferativeType>();
+        mpCell->SetCellProliferativeType(p_PostMitoticType);
         mCellCycleDuration = DBL_MAX;
-    }
 
-    //deterministic model phase boundary division shift
-    if (mDeterministic)
-    {
-        //LastPhase variables are used by daughter cells to calculate new phase boundaries from the original parental ones rather than the now-shifted sister cell variables copied from the parent
-        mLastPhase2 = mMitoticModePhase2;
-        mLastPhase3 = mMitoticModePhase3;
-        //shift phase boundaries to reflect error in "timer" after division
-        double phaseShift = p_random_number_generator->NormalRandomDeviate(0, mPhaseShiftWidth);
-        mMitoticModePhase2 = mMitoticModePhase2 + phaseShift;
-        mMitoticModePhase3 = mMitoticModePhase3 + phaseShift;
+        if(mKillSpecified)
+        {
+            mpCell->Kill();
+        }
     }
 
     /******************
      * SEQUENCE SAMPLER
      ******************/
-
-    if (mpCell->HasCellProperty<CellLabel>())
+    //if the sequence sampler has been turned on, check for the label & write mitotic mode to log
+    //50% chance of each daughter cell from a mitosis inheriting the label
+    if (mSequenceSampler)
     {
-        (*LogFile::Instance()) << mMitoticMode;
-
-        double labelDie = p_random_number_generator->ranf();
-        if (labelDie <= .5)
+        if (mpCell->HasCellProperty<CellLabel>())
         {
-            mSeqSamplerLabelSister = true;
-            mpCell->RemoveCellProperty<CellLabel>();
+            (*LogFile::Instance()) << mMitoticMode;
+            double labelRV = p_random_number_generator->ranf();
+            if (labelRV <= .5)
+            {
+                mSeqSamplerLabelSister = true;
+                mpCell->RemoveCellProperty<CellLabel>();
+            }
+            else
+            {
+                mSeqSamplerLabelSister = false;
+            }
         }
         else
         {
+            //prevents lost-label cells from labelling their progeny
             mSeqSamplerLabelSister = false;
         }
     }
-
 }
 
 void HeCellCycleModel::Initialise()
 {
-    if (mTiLOffset <= 0) //the "regular" case, set cycle duration normally
+    boost::shared_ptr<AbstractCellProperty> p_Transit =
+            mpCell->rGetCellPropertyCollection().GetCellPropertyRegistry()->Get<TransitCellProliferativeType>();
+    mpCell->SetCellProliferativeType(p_Transit);
+
+    if (mTiLOffset == 0) //the "regular" case, set cycle duration normally
     {
+        SetCellCycleDuration();
+    }
+
+    if (mTiLOffset < 0) //these cells are offspring of Wan stem cells
+    {
+        mReadyToDivide = false;
         SetCellCycleDuration();
     }
 
@@ -227,7 +240,7 @@ void HeCellCycleModel::Initialise()
 
         /**
          * This calculation "runs time forward" by subtracting appropriately generated cell lengths from TiLOffset
-         *Ultimately c is subtracted from a final cell length calculation to give the appropriate reduced cycle length
+         * Ultimately c is subtracted from a final cell length calculation to give the appropriate reduced cycle length
          **/
 
         double c = mTiLOffset;
@@ -252,9 +265,15 @@ void HeCellCycleModel::InitialiseDaughterCell()
 
     if (mMitoticMode == 1) //RPC becomes specified retinal neuron in asymmetric PD mitosis
     {
-        mpCell->SetCellProliferativeType(mp_PostMitoticType);
+        boost::shared_ptr<AbstractCellProperty> p_PostMitoticType =
+                mpCell->rGetCellPropertyCollection().GetCellPropertyRegistry()->Get<DifferentiatedCellProliferativeType>();
+        mpCell->SetCellProliferativeType(p_PostMitoticType);
         mCellCycleDuration = DBL_MAX;
 
+        if(mKillSpecified)
+        {
+            mpCell->Kill();
+        }
     }
 
     //daughter cell's mCellCycleDuration is copied from parent; modified by a normally distributed shift if it remains proliferative
@@ -264,21 +283,34 @@ void HeCellCycleModel::InitialiseDaughterCell()
         mCellCycleDuration = std::max(mGammaShift, mCellCycleDuration + sisterShift); // sister shift respects 4 hour refractory period
     }
 
-    //deterministic model phase boundary division shift for daughter cells- calculate from mLastPhase memory variables set by parental cell
+    //deterministic model phase boundary division shift for daughter cells
     if (mDeterministic)
     {
+        //shift phase boundaries to reflect error in "timer" after division
         double phaseShift = p_random_number_generator->NormalRandomDeviate(0, mPhaseShiftWidth);
-        mMitoticModePhase2 = mLastPhase2 + phaseShift;
-        mMitoticModePhase3 = mLastPhase3 + phaseShift;
+        mMitoticModePhase2 = mMitoticModePhase2 + phaseShift;
+        mMitoticModePhase3 = mMitoticModePhase3 + phaseShift;
     }
 
     /******************
      * SEQUENCE SAMPLER
      ******************/
-    if (!mSeqSamplerLabelSister)
+    if (mSequenceSampler)
     {
-        mpCell->RemoveCellProperty<CellLabel>();
+        if (mSeqSamplerLabelSister)
+        {
+            boost::shared_ptr<AbstractCellProperty> p_label_type =
+                    mpCell->rGetCellPropertyCollection().GetCellPropertyRegistry()->Get<CellLabel>();
+            mpCell->AddCellProperty(p_label_type);
+            mSeqSamplerLabelSister = false;
+        }
+        else
+        {
+            mpCell->RemoveCellProperty<CellLabel>();
+        }
     }
+
+    if (mMitoticMode == 2 && mKillSpecified) mpCell->Kill();
 }
 
 void HeCellCycleModel::SetModelParameters(double tiLOffset, double mitoticModePhase2, double mitoticModePhase3,
@@ -326,9 +358,9 @@ void HeCellCycleModel::SetTimeDependentCycleDuration(double peakRateTime, double
     mBaseGammaScale = mGammaScale;
 }
 
-void HeCellCycleModel::SetPostMitoticType(boost::shared_ptr<AbstractCellProperty> p_PostMitoticType)
+void HeCellCycleModel::EnableKillSpecified()
 {
-    mp_PostMitoticType = p_PostMitoticType;
+    mKillSpecified = true;
 }
 
 void HeCellCycleModel::EnableModeEventOutput(double eventStart, unsigned seed)
@@ -346,10 +378,21 @@ void HeCellCycleModel::WriteModeEventOutput()
     (*LogFile::Instance()) << currentTime << "\t" << mSeed << "\t" << currentCellID << "\t" << mMitoticMode << "\n";
 }
 
-void HeCellCycleModel::EnableSequenceSampler(boost::shared_ptr<AbstractCellProperty> label)
+void HeCellCycleModel::EnableSequenceSampler()
 {
     mSequenceSampler = true;
-    mp_label_Type = label;
+    boost::shared_ptr<AbstractCellProperty> p_label_type =
+            mpCell->rGetCellPropertyCollection().GetCellPropertyRegistry()->Get<CellLabel>();
+    mpCell->AddCellProperty(p_label_type);
+}
+
+void HeCellCycleModel::PassDebugWriter(boost::shared_ptr<ColumnDataWriter> debugWriter, int timeID,
+                                       std::vector<int> varIDs)
+{
+    mDebug = true;
+    mDebugWriter = debugWriter;
+    mTimeID = timeID;
+    mVarIDs = varIDs;
 }
 
 void HeCellCycleModel::EnableModelDebugOutput(boost::shared_ptr<ColumnDataWriter> debugWriter)
@@ -358,14 +401,16 @@ void HeCellCycleModel::EnableModelDebugOutput(boost::shared_ptr<ColumnDataWriter
     mDebugWriter = debugWriter;
 
     mTimeID = mDebugWriter->DefineUnlimitedDimension("Time", "h");
+
     mVarIDs.push_back(mDebugWriter->DefineVariable("CellID", "No"));
     mVarIDs.push_back(mDebugWriter->DefineVariable("TiL", "h"));
     mVarIDs.push_back(mDebugWriter->DefineVariable("CycleDuration", "h"));
     mVarIDs.push_back(mDebugWriter->DefineVariable("Phase2Boundary", "h"));
     mVarIDs.push_back(mDebugWriter->DefineVariable("Phase3Boundary", "h"));
     mVarIDs.push_back(mDebugWriter->DefineVariable("Phase", "No"));
-    mVarIDs.push_back(mDebugWriter->DefineVariable("Dieroll", "Percentile"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("MitoticModeRV", "Percentile"));
     mVarIDs.push_back(mDebugWriter->DefineVariable("MitoticMode", "Mode"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("Label", "binary"));
 
     mDebugWriter->EndDefineMode();
 }
@@ -373,8 +418,9 @@ void HeCellCycleModel::EnableModelDebugOutput(boost::shared_ptr<ColumnDataWriter
 void HeCellCycleModel::WriteDebugData(double currentTiL, unsigned phase, double mitoticModeRV)
 {
     double currentTime = SimulationTime::Instance()->GetTime();
-    CellPtr currentCell = GetCell();
-    double currentCellID = (double) currentCell->GetCellId();
+    double currentCellID = mpCell->GetCellId();
+    unsigned label = 0;
+    if (mpCell->HasCellProperty<CellLabel>()) label = 1;
 
     mDebugWriter->PutVariable(mTimeID, currentTime);
     mDebugWriter->PutVariable(mVarIDs[0], currentCellID);
@@ -388,6 +434,10 @@ void HeCellCycleModel::WriteDebugData(double currentTiL, unsigned phase, double 
         mDebugWriter->PutVariable(mVarIDs[6], mitoticModeRV);
     }
     mDebugWriter->PutVariable(mVarIDs[7], mMitoticMode);
+    if (mSequenceSampler)
+    {
+        mDebugWriter->PutVariable(mVarIDs[8], label);
+    }
     mDebugWriter->AdvanceAlongUnlimitedDimension();
 }
 

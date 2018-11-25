@@ -190,6 +190,7 @@ int main(int argc, char *argv[])
         p_cycle_model->SetModelParameters(phase2Generation, phase3Generation, pAtoh7, pPtf1a, png);
         p_cycle_model->SetSpecifiedTypes(p_RGC_fate, p_AC_HC_fate, p_PR_BC_fate);
         if (outputMode == 2) p_cycle_model->EnableSequenceSampler(p_label);
+        if (outputMode == 2) p_cell->AddCellProperty(p_label);
         p_cell->InitialiseCellCycleModel();
         cells.push_back(p_cell);
 

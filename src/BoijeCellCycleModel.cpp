@@ -2,9 +2,9 @@
 
 BoijeCellCycleModel::BoijeCellCycleModel() :
         AbstractSimpleCellCycleModel(), mOutput(false), mEventStartTime(), mSequenceSampler(false), mSeqSamplerLabelSister(
-                false), mDebug(false), mTimeID(), mVarIDs(), mDebugWriter(), mGeneration(0), mPhase2gen(3), mPhase3gen(5), mprobAtoh7(0.32), mprobPtf1a(
-                0.30), mprobng(0.80), mAtoh7Signal(false), mPtf1aSignal(false), mNgSignal(false), mMitoticMode(0), mSeed(
-                0), mp_PostMitoticType(), mp_RGC_Type(), mp_AC_HC_Type(), mp_PR_BC_Type(), mp_label_Type()
+                false), mDebug(false), mTimeID(), mVarIDs(), mDebugWriter(), mGeneration(0), mPhase2gen(3), mPhase3gen(
+                5), mprobAtoh7(0.32), mprobPtf1a(0.30), mprobng(0.80), mAtoh7Signal(false), mPtf1aSignal(false), mNgSignal(
+                false), mMitoticMode(0), mSeed(0), mp_PostMitoticType(), mp_RGC_Type(), mp_AC_HC_Type(), mp_PR_BC_Type(), mp_label_Type()
 {
 }
 
@@ -12,11 +12,12 @@ BoijeCellCycleModel::BoijeCellCycleModel(const BoijeCellCycleModel& rModel) :
         AbstractSimpleCellCycleModel(rModel), mOutput(rModel.mOutput), mEventStartTime(rModel.mEventStartTime), mSequenceSampler(
                 rModel.mSequenceSampler), mSeqSamplerLabelSister(rModel.mSeqSamplerLabelSister), mDebug(rModel.mDebug), mTimeID(
                 rModel.mTimeID), mVarIDs(rModel.mVarIDs), mDebugWriter(rModel.mDebugWriter), mGeneration(
-                rModel.mGeneration), mPhase2gen(rModel.mPhase2gen), mPhase3gen(rModel.mPhase3gen), mprobAtoh7(rModel.mprobAtoh7), mprobPtf1a(rModel.mprobPtf1a), mprobng(
-                rModel.mprobng), mAtoh7Signal(rModel.mAtoh7Signal), mPtf1aSignal(rModel.mPtf1aSignal), mNgSignal(
-                rModel.mNgSignal), mMitoticMode(rModel.mMitoticMode), mSeed(rModel.mSeed), mp_PostMitoticType(
-                rModel.mp_PostMitoticType), mp_RGC_Type(rModel.mp_RGC_Type), mp_AC_HC_Type(rModel.mp_AC_HC_Type), mp_PR_BC_Type(
-                rModel.mp_PR_BC_Type), mp_label_Type(rModel.mp_label_Type)
+                rModel.mGeneration), mPhase2gen(rModel.mPhase2gen), mPhase3gen(rModel.mPhase3gen), mprobAtoh7(
+                rModel.mprobAtoh7), mprobPtf1a(rModel.mprobPtf1a), mprobng(rModel.mprobng), mAtoh7Signal(
+                rModel.mAtoh7Signal), mPtf1aSignal(rModel.mPtf1aSignal), mNgSignal(rModel.mNgSignal), mMitoticMode(
+                rModel.mMitoticMode), mSeed(rModel.mSeed), mp_PostMitoticType(rModel.mp_PostMitoticType), mp_RGC_Type(
+                rModel.mp_RGC_Type), mp_AC_HC_Type(rModel.mp_AC_HC_Type), mp_PR_BC_Type(rModel.mp_PR_BC_Type), mp_label_Type(
+                rModel.mp_label_Type)
 {
 }
 
@@ -41,7 +42,9 @@ void BoijeCellCycleModel::SetCellCycleDuration()
 
 void BoijeCellCycleModel::ResetForDivision()
 {
-    mGeneration++; //increment generation counter, so that the first division produces generation "1"
+    mGeneration++; //increment generation counter
+    //the first division is ascribed to generation "1"
+
     RandomNumberGenerator* p_random_number_generator = RandomNumberGenerator::Instance();
 
     mMitoticMode = 0; //0=PP;1=PD;2=DD
@@ -49,12 +52,17 @@ void BoijeCellCycleModel::ResetForDivision()
     /************************************************
      * TRANSCRIPTION FACTOR RANDOM VARIABLES & RULES
      * 1st phase: only PP divisions (symmetric proliferative) permitted
-     * 2nd phase: occurs
+     * 2nd phase: all division modes permitted, all TF signals avail
+     * 3rd phase: only PP/DD modes permitted, only ng has nonzero signal
      ************************************************/
 
-    double atoh7RV, ptf1aRV, ngRV = 0;
+    //reset RVs and signals
+    double atoh7RV = 1, ptf1aRV = 1, ngRV = 1;
+    mAtoh7Signal = mPtf1aSignal = mNgSignal = false;
 
-    if (mGeneration > mPhase2gen && mGeneration < mPhase3gen) //if the cell is in the 2nd model phase, all signals have nonzero probabilities at each division
+
+    //PHASE & TF SIGNAL RULES
+    if (mGeneration > mPhase2gen && mGeneration <= mPhase3gen) //if the cell is in the 2nd model phase, all signals have nonzero probabilities at each division
     {
         //RVs take values evenly distributed across 0-1
         atoh7RV = p_random_number_generator->ranf();
@@ -65,54 +73,34 @@ void BoijeCellCycleModel::ResetForDivision()
         {
             mAtoh7Signal = true;
         }
-        else
-        {
-            mAtoh7Signal = false;
-        }
         if (ptf1aRV < mprobPtf1a)
         {
             mPtf1aSignal = true;
         }
-        else
-        {
-            mPtf1aSignal = false;
-        }
         if (ngRV < mprobng)
         {
             mNgSignal = true;
         }
-        else
-        {
-            mNgSignal = false;
-        }
     }
-
-    /****************
-     * Symmetric postmitotic specification rules
-     * -(asymmetric postmitotic rules specified in InitialiseDaughterCell();)
-     * *************/
 
     if (mGeneration > mPhase3gen) //if the cell is in the 3rd model phase, only ng signal has a nonzero probability
     {
         ngRV = p_random_number_generator->ranf();
-        ; //roll a probability die for the ng signal
-        if (mAtoh7Signal == true)
-        {
-            mAtoh7Signal = false;
-            mMitoticMode = 1; //Atoh7 signal gives an asymmetrical PD divison
-        }
-        if (mPtf1aSignal == true)
-        {
-            mPtf1aSignal = false;
-        }
+        //roll a probability die for the ng signal
         if (ngRV < mprobng)
         {
             mNgSignal = true;
         }
-        else
-        {
-            mNgSignal = false;
-        }
+    }
+
+    /****************
+     * MITOTIC MODE & SPECIFICATION RULES
+     * -(additional asymmetric postmitotic rules specified in InitialiseDaughterCell();)
+     * *************/
+
+    if(mAtoh7Signal == true)
+    {
+        mMitoticMode = 1;
     }
 
     if (mPtf1aSignal == true && mAtoh7Signal == false) //Ptf1A alone gives a symmetrical postmitotic AC/HC division
@@ -137,7 +125,7 @@ void BoijeCellCycleModel::ResetForDivision()
 
     if (mDebug)
     {
-        WriteDebugData(atoh7RV,ptf1aRV,ngRV);
+        WriteDebugData(atoh7RV, ptf1aRV, ngRV);
     }
 
     if (mOutput)
@@ -150,19 +138,27 @@ void BoijeCellCycleModel::ResetForDivision()
     /******************
      * SEQUENCE SAMPLER
      ******************/
-
-    if (mpCell->HasCellProperty<CellLabel>())
+    //if the sequence sampler has been turned on, check for the label & write mitotic mode to log
+    //50% chance of each daughter cell from a mitosis inheriting the label
+    if (mSequenceSampler)
     {
-        (*LogFile::Instance()) << mMitoticMode;
-
-        double labelDie = p_random_number_generator->ranf();
-        if (labelDie <= .5)
+        if (mpCell->HasCellProperty<CellLabel>())
         {
-            mSeqSamplerLabelSister = true;
-            mpCell->RemoveCellProperty<CellLabel>();
+            (*LogFile::Instance()) << mMitoticMode;
+            double labelRV = p_random_number_generator->ranf();
+            if (labelRV <= .5)
+            {
+                mSeqSamplerLabelSister = true;
+                mpCell->RemoveCellProperty<CellLabel>();
+            }
+            else
+            {
+                mSeqSamplerLabelSister = false;
+            }
         }
         else
         {
+            //prevents lost-label cells from labelling their progeny
             mSeqSamplerLabelSister = false;
         }
     }
@@ -189,9 +185,17 @@ void BoijeCellCycleModel::InitialiseDaughterCell()
     /******************
      * SEQUENCE SAMPLER
      ******************/
-    if (!mSeqSamplerLabelSister)
+    if (mSequenceSampler)
     {
-        mpCell->RemoveCellProperty<CellLabel>();
+        if (mSeqSamplerLabelSister)
+        {
+            mpCell->AddCellProperty(mp_label_Type);
+            mSeqSamplerLabelSister = false;
+        }
+        else
+        {
+            mpCell->RemoveCellProperty<CellLabel>();
+        }
     }
 }
 
@@ -209,14 +213,17 @@ void BoijeCellCycleModel::SetPostMitoticType(boost::shared_ptr<AbstractCellPrope
 {
     mp_PostMitoticType = p_PostMitoticType;
 }
-void BoijeCellCycleModel::SetSpecifiedTypes(boost::shared_ptr<AbstractCellProperty> p_RGC_Type, boost::shared_ptr<AbstractCellProperty> p_AC_HC_Type, boost::shared_ptr<AbstractCellProperty> p_PR_BC_Type)
+void BoijeCellCycleModel::SetSpecifiedTypes(boost::shared_ptr<AbstractCellProperty> p_RGC_Type,
+                                            boost::shared_ptr<AbstractCellProperty> p_AC_HC_Type,
+                                            boost::shared_ptr<AbstractCellProperty> p_PR_BC_Type)
 {
     mp_RGC_Type = p_RGC_Type;
     mp_AC_HC_Type = p_AC_HC_Type;
     mp_PR_BC_Type = p_PR_BC_Type;
 }
 
-void BoijeCellCycleModel::SetModelParameters(unsigned phase2gen, unsigned phase3gen, double probAtoh7, double probPtf1a, double probng)
+void BoijeCellCycleModel::SetModelParameters(unsigned phase2gen, unsigned phase3gen, double probAtoh7, double probPtf1a,
+                                             double probng)
 {
     mPhase2gen = phase2gen;
     mPhase3gen = phase3gen;
@@ -253,9 +260,9 @@ void BoijeCellCycleModel::EnableModelDebugOutput(boost::shared_ptr<ColumnDataWri
     mDebugWriter = debugWriter;
 
     mTimeID = mDebugWriter->DefineUnlimitedDimension("Time", "h");
-    mVarIDs.push_back(mDebugWriter->DefineVariable("CellID", "No."));
-    mVarIDs.push_back(mDebugWriter->DefineVariable("Generation", "No."));
-    mVarIDs.push_back(mDebugWriter->DefineVariable("MitoticMode", "0=PP;1=PD;2=DD"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("CellID", "No"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("Generation", "No"));
+    mVarIDs.push_back(mDebugWriter->DefineVariable("MitoticMode", "Mode"));
     mVarIDs.push_back(mDebugWriter->DefineVariable("atoh7Set", "Percentile"));
     mVarIDs.push_back(mDebugWriter->DefineVariable("atoh7RV", "Percentile"));
     mVarIDs.push_back(mDebugWriter->DefineVariable("ptf1aSet", "Percentile"));

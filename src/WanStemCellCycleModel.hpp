@@ -1,10 +1,11 @@
 #ifndef WANSTEMCELLCYCLEMODEL_HPP_
 #define WANSTEMCELLCYCLEMODEL_HPP_
 
+#include "AbstractCellPopulation.hpp"
 #include "AbstractSimpleCellCycleModel.hpp"
 #include "RandomNumberGenerator.hpp"
 #include "Cell.hpp"
-#include "DifferentiatedCellProliferativeType.hpp"
+#include "StemCellProliferativeType.hpp"
 #include "SmartPointers.hpp"
 #include "ColumnDataWriter.hpp"
 #include "LogFile.hpp"
@@ -64,6 +65,8 @@ private:
 
 protected:
     //mode/output variables
+    bool mExpandingStemPopulation;
+    boost::shared_ptr<AbstractCellPopulation<2>> mPopulation;
     bool mOutput;
     double mEventStartTime;
     //debug writer stuff
@@ -72,17 +75,17 @@ protected:
     std::vector<int> mVarIDs;
     boost::shared_ptr<ColumnDataWriter> mDebugWriter;
     //model parameters and state memory vars
-    bool mRPCfate;
+    int mBasePopulation;
     double mGammaShift;
     double mGammaShape;
     double mGammaScale;
+    unsigned mMitoticMode;
     unsigned mSeed;
     bool mTimeDependentCycleDuration;
     double mPeakRateTime;
     double mIncreasingRateSlope;
     double mDecreasingRateSlope;
     double mBaseGammaScale;
-    boost::shared_ptr<AbstractCellProperty> mp_TransitType;
     std::vector<double> mHeParamVector;
 
     /**
@@ -123,14 +126,20 @@ public:
 
     /**
      * Overridden ResetForDivision() method.
-     * Contains general mitotic mode logic
      **/
     void ResetForDivision();
 
     /**
+     * Overridden Initialise() method.
+     * Sets proliferative type as stem cell
+     **/
+
+    void Initialise();
+
+    /**
      * Overridden InitialiseDaughterCell() method.
-     * Used to apply sister-cell time shifting (cell cycle duration, deterministic phase boundaries)
      * Used to implement asymmetric mitotic mode
+     * Daughter cells are initialised w/ He cell cycle model
      * */
     void InitialiseDaughterCell();
 
@@ -140,10 +149,8 @@ public:
      * gammaShift = 4, gammaShape = 2, gammaScale = 1, sisterShift = 1
      */
     void SetModelParameters(double gammaShift = 4, double gammaShape = 2, double gammaScale = 1, std::vector<double> heParamVector = { 8, 15, 1, 0, .2, .4, .2, 0, 4, 2, 1, 1 });
+    void EnableExpandingStemPopulation(int basePopulation, boost::shared_ptr<AbstractCellPopulation<2>> p_population);
     void SetTimeDependentCycleDuration(double peakRateTime, double increasingSlope, double decreasingSlope);
-
-    //This should normally be a DifferentiatedCellProliferativeType
-    void SetTransitType(boost::shared_ptr<AbstractCellProperty> p_PostMitoticType);
 
     //Functions to enable per-cell mitotic mode logging for mode rate & sequence sampling fixtures
     //Uses singleton logfile
