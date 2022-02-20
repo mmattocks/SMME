@@ -286,7 +286,7 @@ int main(int argc, char *argv[])
                 currSimEndTime = endTime - inductionTime;
                 if (outputMode == 1) p_cycle_model->EnableModeEventOutput(inductionTime, seed);
             }
-            //if the lineage starts after the induction time, give it zero & TiL run the appropriate-length simulation
+            //if the lineage starts after the induction time, give it zero TiL & run the appropriate-length simulation
             //(ie. the endTime is reduced by the amount of time after induction that the first mitosis occurs)
             if (lineageStartTime >= inductionTime)
             {
